@@ -73,9 +73,24 @@ from database import (
     migrate_to_multiuser,
 )
 from scraper import scrape_keyword, scrape_all_keywords, generate_mock_items, save_scraped_items
-from detail_scraper import scrape_item_detail, update_item_details, get_item_display_data
-from llm_scorer import score_item_fit_sync
 from email_service import send_magic_link, send_invite_confirmation
+
+# Optional ML dependencies (not available on Railway due to size)
+try:
+    from detail_scraper import scrape_item_detail, update_item_details, get_item_display_data
+    DETAIL_SCRAPER_AVAILABLE = True
+except ImportError:
+    DETAIL_SCRAPER_AVAILABLE = False
+    scrape_item_detail = None
+    update_item_details = None
+    def get_item_display_data(item): return item  # passthrough
+
+try:
+    from llm_scorer import score_item_fit_sync
+    LLM_SCORER_AVAILABLE = True
+except ImportError:
+    LLM_SCORER_AVAILABLE = False
+    score_item_fit_sync = None
 
 app = FastAPI(title="TAPIERE")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -119,6 +134,10 @@ detail_scrape_running = False
 def run_detail_scrape_worker():
     """Background worker that scrapes item details from the queue."""
     global detail_scrape_running, detail_scrape_queue
+
+    if not DETAIL_SCRAPER_AVAILABLE:
+        print("[DetailScraper] Not available (playwright not installed)")
+        return
 
     if detail_scrape_running:
         return
