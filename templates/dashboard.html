@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Shopping Helper{% endblock %}
+
+{% block extra_head %}
+<style>
+    .dashboard-content {
+        padding: 32px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+
+    .stat-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 20px;
+        transition: all 0.15s;
+    }
+
+    .stat-card:hover {
+        box-shadow: var(--shadow-md);
+    }
+
+    .stat-label {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 28px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .quick-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .quick-action-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        color: var(--text-primary);
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.15s;
+    }
+
+    .quick-action-btn:hover {
+        border-color: var(--text-muted);
+        background: var(--bg-hover);
+    }
+
+    .quick-action-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-wrapper">
+    <!-- Topbar -->
+    <div class="topbar">
+        <button class="topbar-nav" onclick="history.back()" title="Go back">←</button>
+        <button class="topbar-nav" onclick="history.forward()" title="Go forward">→</button>
+        <span class="topbar-title">Dashboard</span>
+    </div>
+
+    <div class="content-area">
+        <div class="dashboard-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Unseen</div>
+                    <div class="stat-value" id="unseenCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total</div>
+                    <div class="stat-value" id="totalCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Saved</div>
+                    <div class="stat-value" id="savedCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Keywords</div>
+                    <div class="stat-value" id="keywordCount">0</div>
+                </div>
+            </div>
+
+            <div class="quick-actions">
+                <a href="/new" class="quick-action-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v18M3 12h18M5.636 5.636l12.728 12.728M18.364 5.636L5.636 18.364"/><circle cx="12" cy="12" r="2"/></svg> Browse New
+                </a>
+                <a href="/keywords" class="quick-action-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Keyword
+                </a>
+                <a href="/saved" class="quick-action-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg> View Saved
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function loadDashboardStats() {
+        const res = await fetch('/api/stats');
+        const stats = await res.json();
+        document.getElementById('unseenCount').textContent = stats.unseen_items || 0;
+        document.getElementById('totalCount').textContent = stats.total_items || 0;
+        document.getElementById('savedCount').textContent = stats.saved_items || 0;
+
+        // Update navbar badge
+        const badge = document.getElementById('navUnseenBadge');
+        if (badge) {
+            badge.textContent = stats.unseen_items || 0;
+            badge.style.display = stats.unseen_items > 0 ? 'block' : 'none';
+        }
+    }
+
+    async function loadKeywordCount() {
+        const res = await fetch('/api/keywords');
+        const data = await res.json();
+        document.getElementById('keywordCount').textContent = data.keywords?.length || 0;
+    }
+
+    loadDashboardStats();
+    loadKeywordCount();
+</script>
+{% endblock %}

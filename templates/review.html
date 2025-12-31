@@ -1,0 +1,486 @@
+{% extends "base.html" %}
+
+{% block title %}Review - Shopping Helper{% endblock %}
+
+{% block extra_head %}
+<style>
+    .review-content {
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        min-height: calc(100vh - 48px);
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+
+    .page-title {
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .page-subtitle {
+        font-size: 14px;
+        color: var(--text-muted);
+        margin-top: 4px;
+    }
+
+    .review-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+        gap: 20px;
+        flex: 1;
+        align-content: start;
+    }
+
+    .review-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .review-card:hover {
+        border-color: var(--accent-primary);
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+
+    .review-card img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        background: var(--bg-tertiary);
+    }
+
+    .review-card-info {
+        padding: 14px;
+    }
+
+    .review-card-title {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-bottom: 10px;
+        height: 36px;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .review-card-price {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .review-card-status {
+        display: inline-block;
+        margin-top: 8px;
+        padding: 4px 8px;
+        background: var(--accent-warning);
+        background: rgba(245, 159, 0, 0.15);
+        color: var(--accent-warning);
+        font-size: 11px;
+        font-weight: 500;
+        border-radius: 4px;
+    }
+
+    .review-main {
+        flex: 1;
+    }
+
+    .controls-bar {
+        display: flex;
+        justify-content: center;
+        gap: 24px;
+        padding: 16px 24px;
+        font-size: 12px;
+        color: var(--text-muted);
+        background: none;
+        border: none;
+    }
+
+    .controls-bar span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-wrapper">
+    <!-- Topbar -->
+    <div class="topbar">
+        <button class="topbar-nav" onclick="history.back()" title="Go back">←</button>
+        <button class="topbar-nav" onclick="history.forward()" title="Go forward">→</button>
+        <span class="topbar-title">Review</span>
+    </div>
+
+    <div class="content-area">
+        <div class="review-content">
+            <div class="review-main">
+                <div class="page-header">
+                    <span id="itemCount" style="color: var(--text-muted); font-size: 13px;"></span>
+                </div>
+
+                <div class="review-grid" id="reviewGrid"></div>
+
+                <div class="empty-state" id="emptyState" style="display: none;">
+                    <h2>All caught up!</h2>
+                    <p>No items need review right now.</p>
+                    <p><a href="/new">Browse New Items</a></p>
+                </div>
+            </div>
+
+            <div class="controls-bar" id="controlsBar" style="display: none;">
+                <span><kbd>1-5</kbd> Rate item</span>
+                <span><kbd>R</kbd> Remove</span>
+                <span><kbd>J</kbd><kbd>K</kbd> Next/Prev item</span>
+                <span><kbd>←</kbd><kbd>→</kbd> Navigate images</span>
+                <span><kbd>Esc</kbd> Close</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Review Modal (uses shared detail-* classes) -->
+<div class="detail-overlay" id="detailOverlay" onclick="if(event.target === this) closeDetail()">
+    <div class="detail-modal">
+        <button class="detail-close" onclick="closeDetail()">×</button>
+        <div class="detail-image-section">
+            <img class="detail-main-image" id="detailImage" src="">
+            <div class="detail-thumbnails" id="detailThumbnails"></div>
+        </div>
+        <div class="detail-info-section" id="detailInfo"></div>
+    </div>
+</div>
+
+<div class="preload" id="preloadContainer"></div>
+
+<script>
+    let items = [];
+    let currentIndex = 0;
+    let currentImageIndex = 0;
+    let currentImages = [];
+    let itemDetailsCache = {};
+
+    async function loadItems() {
+        // Get saved items that don't have a rating
+        const res = await fetch('/api/items/saved?sort=date&order=desc');
+        const data = await res.json();
+        // Filter to only unrated items
+        items = data.items.filter(item => !item.stars || item.stars === 0);
+        renderGrid();
+    }
+
+    function renderGrid() {
+        const grid = document.getElementById('reviewGrid');
+        const empty = document.getElementById('emptyState');
+        const controls = document.getElementById('controlsBar');
+        document.getElementById('itemCount').textContent = items.length > 0 ? items.length + ' for review' : '';
+
+        if (items.length === 0) {
+            grid.style.display = 'none';
+            controls.style.display = 'none';
+            empty.style.display = 'block';
+            return;
+        }
+
+        grid.style.display = 'grid';
+        controls.style.display = 'flex';
+        empty.style.display = 'none';
+
+        grid.innerHTML = items.map((item, i) => {
+            const isSold = item.sold_status && item.sold_status !== 'available' && item.sold_status !== 'unknown';
+            const isAuction = item.is_auction && item.source === 'yahoo';
+            const hammerIcon = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none" style="width:14px;height:14px"><path d="M2 19.99l7.5-7.51 4 4.01-7.5 7.51H2v-4.01zm9.93-9.88l6.36-6.36a2.121 2.121 0 013 3l-6.37 6.37-2.99-3.01zm3.06-3.05l2.99 2.99 2.12-2.12-2.99-2.99-2.12 2.12z"/></svg>';
+
+            return `
+            <div class="review-card ${isSold ? 'sold' : ''}" onclick="showDetail(${i})">
+                <img src="${item.image_url || ''}" onerror="this.style.background='var(--bg-tertiary)'">
+                <div class="review-card-info">
+                    <div class="review-card-title">${item.title || 'Untitled'}</div>
+                    <div class="price-row">
+                        <span class="review-card-price">¥${(item.price || 0).toLocaleString()}</span>
+                        ${isAuction ? `<span class="auction-indicator">${hammerIcon}</span>` : ''}
+                        ${isSold ? '<span class="sold-badge">SOLD</span>' : ''}
+                    </div>
+                    <span class="review-card-status">Needs Review</span>
+                </div>
+            </div>
+        `}).join('');
+    }
+
+    async function fetchItemDetails(itemId) {
+        if (itemDetailsCache[itemId]) return itemDetailsCache[itemId];
+        try {
+            const res = await fetch('/api/items/' + itemId + '/details');
+            const data = await res.json();
+            itemDetailsCache[itemId] = data;
+            return data;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function showDetail(index) {
+        currentIndex = index;
+        currentImageIndex = 0;
+        const item = items[index];
+        const details = await fetchItemDetails(item.id);
+
+        currentImages = [];
+        if (details) {
+            for (let i = 1; i <= 20; i++) {
+                const imgUrl = details['img_url_' + i];
+                if (imgUrl) currentImages.push(imgUrl);
+            }
+        }
+        if (currentImages.length === 0 && item.image_url) {
+            currentImages = [item.image_url];
+        }
+
+        document.getElementById('detailImage').src = currentImages[0] || '';
+        renderThumbnails();
+        renderDetailInfo(details);
+        document.getElementById('detailOverlay').classList.add('active');
+
+        // Refresh sold status and price in background when opening item
+        refreshSoldStatus(item.id);
+
+        // Preload next item
+        if (index + 1 < items.length) {
+            fetchItemDetails(items[index + 1].id);
+        }
+    }
+
+    function renderThumbnails() {
+        const container = document.getElementById('detailThumbnails');
+        if (currentImages.length <= 1) {
+            container.style.display = 'none';
+            return;
+        }
+        container.style.display = 'flex';
+        container.innerHTML = currentImages.map((img, i) =>
+            '<img class="detail-thumb ' + (i === currentImageIndex ? 'active' : '') + '" src="' + img + '" onclick="setImage(' + i + ')">'
+        ).join('');
+    }
+
+    function setImage(index) {
+        currentImageIndex = index;
+        document.getElementById('detailImage').src = currentImages[index];
+        document.querySelectorAll('.detail-thumb').forEach((el, i) => {
+            el.classList.toggle('active', i === index);
+            if (i === index) {
+                el.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+            }
+        });
+    }
+
+    function formatAuctionTime(endTime) {
+        if (!endTime) return null;
+        const endDate = new Date(endTime * 1000);
+        const now = new Date();
+        const diff = endDate - now;
+
+        if (diff < 0) return 'Ended';
+
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+        if (hours > 24) {
+            const days = Math.floor(hours / 24);
+            return days + 'd ' + (hours % 24) + 'h';
+        } else if (hours > 0) {
+            return hours + 'h ' + minutes + 'm';
+        } else {
+            return minutes + 'm';
+        }
+    }
+
+    function renderDetailInfo(details) {
+        const item = items[currentIndex];
+        const date = item.scraped_at ? new Date(item.scraped_at).toLocaleDateString() : 'Unknown';
+        const description = details?.description || item.description || '';
+        const isSold = item.sold_status && item.sold_status !== 'available' && item.sold_status !== 'unknown';
+        const isAuction = item.is_auction && item.source === 'yahoo';
+        const auctionTime = formatAuctionTime(item.auction_end_time);
+        const hammerIcon = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none" style="width:14px;height:14px;vertical-align:middle"><path d="M2 19.99l7.5-7.51 4 4.01-7.5 7.51H2v-4.01zm9.93-9.88l6.36-6.36a2.121 2.121 0 013 3l-6.37 6.37-2.99-3.01zm3.06-3.05l2.99 2.99 2.12-2.12-2.99-2.99-2.12 2.12z"/></svg>';
+
+        // Auction/Buy It Now info text
+        let auctionInfoHtml = '';
+        if (item.source === 'yahoo') {
+            if (isAuction && auctionTime) {
+                const isEndingSoon = item.auction_end_time && (item.auction_end_time * 1000 - Date.now()) < 3600000;
+                auctionInfoHtml = `<div class="auction-info ${isEndingSoon ? 'ending-soon' : ''}">${hammerIcon} AUCTION ENDS ${auctionTime}</div>`;
+            } else if (!isAuction) {
+                auctionInfoHtml = '<div class="auction-info">BUY IT NOW</div>';
+            }
+        }
+
+        // Sold status info
+        let soldHtml = '';
+        if (isSold) {
+            const statusText = item.sold_status === 'sold' ? 'SOLD' :
+                               item.sold_status === 'trading' ? 'TRADING' :
+                               item.sold_status === 'cancelled' ? 'CANCELLED' :
+                               item.sold_status === 'ended' ? 'ENDED' : 'UNAVAILABLE';
+            soldHtml = `<span class="sold-badge" style="margin-left:8px">${statusText}</span>`;
+        }
+
+        document.getElementById('detailInfo').innerHTML = `
+            <h2 class="detail-title">${item.title || 'Untitled'}</h2>
+            <div class="detail-price">¥${(item.price || 0).toLocaleString()}${soldHtml}</div>
+            ${auctionInfoHtml}
+            <div class="detail-meta">
+                <a href="${item.url}" target="_blank" class="source-badge ${item.source}" style="text-decoration: none;">${item.source} ↗</a>
+                ${isAuction ? '<span class="source-badge yahoo">AUCTION</span>' : ''}
+                <span style="font-size: 13px; color: var(--text-muted);">${date}</span>
+            </div>
+            <div class="rating-section">
+                <div class="rating-label">Rating</div>
+                <div class="rating-stars">
+                    ${[1,2,3,4,5].map(n => `
+                        <button class="star-btn ${item.stars >= n ? 'active' : ''}" onclick="rateItem(${n})">
+                            ${item.stars >= n ? '★' : '☆'}
+                            <span class="key-hint">${n}</span>
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+            ${description ? `
+                <div class="detail-description-label">Description</div>
+                <div class="detail-description">${description}</div>
+            ` : ''}
+            <div class="detail-actions">
+                <button class="detail-remove" onclick="removeItem()">Remove <kbd>R</kbd></button>
+            </div>
+        `;
+    }
+
+    async function refreshSoldStatus(itemId) {
+        // Refresh sold status, price, and auction info when opening item
+        try {
+            const item = items.find(i => i.id === itemId);
+            if (!item) return;
+
+            const res = await fetch('/api/items/' + itemId + '/refresh-status', { method: 'POST' });
+            const data = await res.json();
+
+            if (data.changed) {
+                // Update local data
+                item.sold_status = data.sold_status;
+                if (data.price) item.price = data.price;
+                if (data.is_auction !== undefined) item.is_auction = data.is_auction;
+                if (data.auction_end_time !== undefined) item.auction_end_time = data.auction_end_time;
+
+                // Re-render grid
+                renderGrid();
+
+                // Re-render detail if this item is open
+                if (items[currentIndex] && items[currentIndex].id === itemId) {
+                    renderDetailInfo(itemDetailsCache[itemId]);
+                }
+            }
+        } catch (e) {
+            console.error('Failed to refresh status:', e);
+        }
+    }
+
+    async function rateItem(stars) {
+        const item = items[currentIndex];
+        await fetch('/api/items/' + item.id + '/rate', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stars })
+        });
+
+        // Remove from review list and move to next
+        items.splice(currentIndex, 1);
+        renderGrid();
+
+        if (items.length === 0) {
+            closeDetail();
+        } else if (currentIndex >= items.length) {
+            currentIndex = items.length - 1;
+            showDetail(currentIndex);
+        } else {
+            showDetail(currentIndex);
+        }
+    }
+
+    function navigate(direction) {
+        const newIndex = currentIndex + direction;
+        if (newIndex >= 0 && newIndex < items.length) {
+            showDetail(newIndex);
+        }
+    }
+
+    async function removeItem() {
+        const item = items[currentIndex];
+        await fetch('/api/items/' + item.id + '/unsave', { method: 'POST' });
+
+        // Remove from review list
+        items.splice(currentIndex, 1);
+        renderGrid();
+
+        if (items.length === 0) {
+            closeDetail();
+        } else if (currentIndex >= items.length) {
+            currentIndex = items.length - 1;
+            showDetail(currentIndex);
+        } else {
+            showDetail(currentIndex);
+        }
+    }
+
+    function closeDetail() {
+        document.getElementById('detailOverlay').classList.remove('active');
+    }
+
+    document.addEventListener('keydown', (e) => {
+        const modalActive = document.getElementById('detailOverlay').classList.contains('active');
+
+        if (!modalActive) return;
+
+        if (e.key === 'Escape') {
+            closeDetail();
+        } else if (e.key === 'ArrowLeft') {
+            if (currentImageIndex > 0) {
+                setImage(currentImageIndex - 1);
+            }
+        } else if (e.key === 'ArrowRight' || e.key === ' ') {
+            e.preventDefault();
+            if (currentImageIndex < currentImages.length - 1) {
+                setImage(currentImageIndex + 1);
+            }
+        } else if (e.key >= '1' && e.key <= '5') {
+            rateItem(parseInt(e.key));
+        } else if (e.key === 'r' || e.key === 'R') {
+            removeItem();
+        } else if (e.key === 'j' || e.key === 'J') {
+            // Previous item (up in list)
+            if (currentIndex > 0) {
+                showDetail(currentIndex - 1);
+            }
+        } else if (e.key === 'k' || e.key === 'K') {
+            // Next item (down in list)
+            if (currentIndex < items.length - 1) {
+                showDetail(currentIndex + 1);
+            }
+        }
+    });
+
+    loadItems();
+</script>
+{% endblock %}

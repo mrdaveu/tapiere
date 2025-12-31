@@ -1,0 +1,875 @@
+{% extends "base.html" %}
+
+{% block title %}Decks - Shopping Helper{% endblock %}
+
+{% block extra_head %}
+<style>
+    .decks-content {
+        padding: 32px;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+
+    .scrape-all-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .scrape-status {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-right: 12px;
+    }
+
+    .scrape-status.running {
+        color: var(--accent-warning);
+    }
+
+    /* Decks grid */
+    .decks-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    /* New deck card */
+    .new-deck-card {
+        width: 100%;
+        height: 80px;
+        background: var(--bg-secondary);
+        border: 2px dashed var(--border-color);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .new-deck-card:hover {
+        border-color: var(--accent-primary);
+        background: var(--bg-hover);
+    }
+
+    .new-deck-card .plus-icon {
+        width: 36px;
+        height: 36px;
+        background: var(--bg-tertiary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: var(--text-muted);
+        transition: all 0.2s;
+    }
+
+    .new-deck-card:hover .plus-icon {
+        background: var(--accent-primary);
+        color: white;
+    }
+
+    .new-deck-card .label {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+
+    /* Deck card */
+    .deck-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: all 0.2s;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .deck-card:hover {
+        border-color: var(--accent-primary);
+        box-shadow: var(--shadow-md);
+    }
+
+    .deck-header {
+        display: flex;
+        align-items: center;
+        padding: 16px 20px;
+        gap: 16px;
+        cursor: pointer;
+    }
+
+    .deck-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-primary);
+        flex: 1;
+    }
+
+    .deck-stats {
+        font-size: 13px;
+        color: var(--text-muted);
+        font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .deck-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .deck-action {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .deck-action.profile {
+        background: var(--accent-primary);
+        color: white;
+    }
+
+    .deck-action.profile:hover {
+        opacity: 0.9;
+    }
+
+    .deck-action.delete {
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+    }
+
+    .deck-action.delete:hover {
+        background: var(--accent-danger);
+        color: white;
+    }
+
+    .deck-expand {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: var(--bg-tertiary);
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        color: var(--text-muted);
+    }
+
+    .deck-expand:hover {
+        background: var(--bg-hover);
+    }
+
+    .deck-expand.expanded {
+        transform: rotate(180deg);
+    }
+
+    /* Keywords section inside deck */
+    .deck-keywords {
+        padding: 0 20px 20px;
+        display: none;
+    }
+
+    .deck-keywords.expanded {
+        display: block;
+    }
+
+    .keywords-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-light);
+    }
+
+    /* Keyword card inside deck */
+    .keyword-card {
+        width: 180px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px;
+        cursor: grab;
+        transition: all 0.2s;
+    }
+
+    .keyword-card:hover {
+        border-color: var(--accent-primary);
+    }
+
+    .keyword-card.dragging {
+        opacity: 0.5;
+    }
+
+    .keyword-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+
+    .keyword-text {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-primary);
+        word-break: break-word;
+    }
+
+    .keyword-stat {
+        font-size: 11px;
+        color: var(--text-muted);
+    }
+
+    .keyword-card-footer {
+        display: flex;
+        gap: 6px;
+        margin-top: 8px;
+    }
+
+    .keyword-action {
+        flex: 1;
+        padding: 6px;
+        border: none;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .keyword-action.scrape {
+        background: var(--accent-primary);
+        color: white;
+    }
+
+    .keyword-action.delete {
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+    }
+
+    .keyword-action.delete:hover {
+        background: var(--accent-danger);
+        color: white;
+    }
+
+    /* New keyword card inside deck */
+    .new-keyword-card-small {
+        width: 180px;
+        height: 100px;
+        background: var(--bg-secondary);
+        border: 2px dashed var(--border-color);
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .new-keyword-card-small:hover {
+        border-color: var(--accent-primary);
+    }
+
+    .new-keyword-card-small .plus-icon {
+        font-size: 20px;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+    }
+
+    .new-keyword-card-small .label {
+        font-size: 11px;
+        color: var(--text-muted);
+    }
+
+    /* Sizing Modal */
+    .sizing-modal {
+        max-width: 700px;
+    }
+
+    .sizing-body {
+        display: flex;
+        gap: 32px;
+    }
+
+    .body-diagram {
+        flex: 0 0 200px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .body-diagram svg {
+        width: 180px;
+        height: 320px;
+    }
+
+    .measurements-form {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .measurement-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .measurement-label {
+        width: 140px;
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+
+    .measurement-label .letter {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        background: var(--accent-primary);
+        color: white;
+        border-radius: 4px;
+        text-align: center;
+        line-height: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        margin-right: 8px;
+    }
+
+    .op-select {
+        width: 60px;
+        padding: 6px 8px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 13px;
+    }
+
+    .val-input {
+        width: 60px;
+        padding: 6px 8px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 13px;
+        font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .val-unit {
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .sizing-legend {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-light);
+        font-size: 11px;
+        color: var(--text-muted);
+    }
+
+    .sizing-legend span {
+        margin-right: 16px;
+    }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-wrapper">
+    <!-- Topbar -->
+    <div class="topbar">
+        <button class="topbar-nav" onclick="history.back()" title="Go back">←</button>
+        <button class="topbar-nav" onclick="history.forward()" title="Go forward">→</button>
+        <span class="topbar-title">Decks</span>
+    </div>
+
+    <div class="content-area">
+        <div class="decks-content">
+            <div class="page-header">
+                <div class="scrape-all-btn">
+                    <span class="scrape-status" id="scrapeStatus">Ready</span>
+                    <button class="btn btn-primary" onclick="scrapeAll()">Scrape All</button>
+                </div>
+            </div>
+
+            <div class="decks-grid" id="decksGrid">
+                <!-- New deck card -->
+                <div class="new-deck-card" onclick="openDeckModal()">
+                    <div class="plus-icon">+</div>
+                    <div class="label">New Deck</div>
+                </div>
+                <!-- Deck cards will be inserted here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Deck Modal -->
+<div class="modal-overlay" id="deckModalOverlay" onclick="if(event.target === this) closeDeckModal()">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">New Deck</h3>
+            <p class="modal-hint">Create a folder for related keywords</p>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Deck name</label>
+                <input type="text" class="form-input" id="deckNameInput" placeholder="e.g., Pants, Tops, Jackets...">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeDeckModal()">Cancel</button>
+            <button class="btn btn-success" onclick="addDeck()">Create Deck</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Keyword Modal -->
+<div class="modal-overlay" id="keywordModalOverlay" onclick="if(event.target === this) closeKeywordModal()">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">New Keyword</h3>
+            <p class="modal-hint">Add to deck: <span id="keywordDeckName"></span></p>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Search term</label>
+                <input type="text" class="form-input" id="keywordInput" placeholder="e.g., MHL sweater, vintage denim...">
+            </div>
+            <div class="form-group category-section" id="categorySection">
+                <label>Source (optional)</label>
+                <div class="category-options">
+                    <div class="category-option selected" data-value="both" onclick="selectSource(this)">All Sites</div>
+                    <div class="category-option" data-value="mercari" onclick="selectSource(this)">Mercari</div>
+                    <div class="category-option" data-value="yahoo" onclick="selectSource(this)">Yahoo</div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeKeywordModal()">Cancel</button>
+            <button class="btn btn-success" onclick="addKeyword()">Add Keyword</button>
+        </div>
+    </div>
+</div>
+
+<!-- Sizing Profile Modal -->
+<div class="modal-overlay" id="sizingModalOverlay" onclick="if(event.target === this) closeSizingModal()">
+    <div class="modal sizing-modal">
+        <div class="modal-header">
+            <h3 class="modal-title">Sizing Profile: <span id="sizingDeckName"></span></h3>
+            <p class="modal-hint">Set your preferred measurements for fit scoring</p>
+        </div>
+        <div class="modal-body">
+            <div class="sizing-body">
+                <div class="body-diagram">
+                    <svg viewBox="0 0 100 180" fill="none" stroke="currentColor" stroke-width="1">
+                        <!-- Head -->
+                        <circle cx="50" cy="15" r="10" fill="none"/>
+                        <!-- Neck -->
+                        <line x1="50" y1="25" x2="50" y2="32"/>
+                        <!-- Shoulders A -->
+                        <line x1="25" y1="35" x2="75" y2="35" stroke="var(--accent-primary)" stroke-width="2"/>
+                        <text x="82" y="38" font-size="8" fill="var(--accent-primary)">A</text>
+                        <!-- Arms -->
+                        <line x1="25" y1="35" x2="15" y2="75"/>
+                        <line x1="75" y1="35" x2="85" y2="75"/>
+                        <!-- Torso sides -->
+                        <line x1="28" y1="35" x2="32" y2="95"/>
+                        <line x1="72" y1="35" x2="68" y2="95"/>
+                        <!-- Chest B -->
+                        <line x1="30" y1="50" x2="70" y2="50" stroke="var(--accent-primary)" stroke-width="2"/>
+                        <text x="77" y="53" font-size="8" fill="var(--accent-primary)">B</text>
+                        <!-- Length C (vertical) -->
+                        <line x1="50" y1="35" x2="50" y2="95" stroke="var(--accent-primary)" stroke-width="2" stroke-dasharray="3,2"/>
+                        <text x="53" y="70" font-size="8" fill="var(--accent-primary)">C</text>
+                        <!-- Waist D -->
+                        <line x1="32" y1="75" x2="68" y2="75" stroke="var(--accent-primary)" stroke-width="2"/>
+                        <text x="75" y="78" font-size="8" fill="var(--accent-primary)">D</text>
+                        <!-- Pants waist -->
+                        <line x1="32" y1="95" x2="68" y2="95"/>
+                        <!-- Hip E -->
+                        <line x1="30" y1="105" x2="70" y2="105" stroke="var(--accent-primary)" stroke-width="2"/>
+                        <text x="77" y="108" font-size="8" fill="var(--accent-primary)">E</text>
+                        <!-- Crotch -->
+                        <path d="M32 95 L50 115 L68 95" fill="none"/>
+                        <!-- Rise F (vertical) -->
+                        <line x1="42" y1="95" x2="42" y2="115" stroke="var(--accent-primary)" stroke-width="2"/>
+                        <text x="35" y="108" font-size="8" fill="var(--accent-primary)">F</text>
+                        <!-- Legs -->
+                        <line x1="35" y1="115" x2="32" y2="170"/>
+                        <line x1="65" y1="115" x2="68" y2="170"/>
+                        <!-- Inseam G (vertical) -->
+                        <line x1="58" y1="115" x2="58" y2="170" stroke="var(--accent-primary)" stroke-width="2"/>
+                        <text x="61" y="145" font-size="8" fill="var(--accent-primary)">G</text>
+                    </svg>
+                </div>
+                <div class="measurements-form">
+                    <div class="measurement-row">
+                        <span class="measurement-label"><span class="letter">A</span>Shoulder</span>
+                        <select class="op-select" id="size_a_op">
+                            <option value="">--</option>
+                            <option value=">">&ge;</option>
+                            <option value="<">&le;</option>
+                            <option value="~">&asymp;</option>
+                        </select>
+                        <input type="number" class="val-input" id="size_a_val" placeholder="--">
+                        <span class="val-unit">cm</span>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label"><span class="letter">B</span>Chest</span>
+                        <select class="op-select" id="size_b_op">
+                            <option value="">--</option>
+                            <option value=">">&ge;</option>
+                            <option value="<">&le;</option>
+                            <option value="~">&asymp;</option>
+                        </select>
+                        <input type="number" class="val-input" id="size_b_val" placeholder="--">
+                        <span class="val-unit">cm</span>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label"><span class="letter">C</span>Length</span>
+                        <select class="op-select" id="size_c_op">
+                            <option value="">--</option>
+                            <option value=">">&ge;</option>
+                            <option value="<">&le;</option>
+                            <option value="~">&asymp;</option>
+                        </select>
+                        <input type="number" class="val-input" id="size_c_val" placeholder="--">
+                        <span class="val-unit">cm</span>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label"><span class="letter">D</span>Waist</span>
+                        <select class="op-select" id="size_d_op">
+                            <option value="">--</option>
+                            <option value=">">&ge;</option>
+                            <option value="<">&le;</option>
+                            <option value="~">&asymp;</option>
+                        </select>
+                        <input type="number" class="val-input" id="size_d_val" placeholder="--">
+                        <span class="val-unit">cm</span>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label"><span class="letter">E</span>Hip</span>
+                        <select class="op-select" id="size_e_op">
+                            <option value="">--</option>
+                            <option value=">">&ge;</option>
+                            <option value="<">&le;</option>
+                            <option value="~">&asymp;</option>
+                        </select>
+                        <input type="number" class="val-input" id="size_e_val" placeholder="--">
+                        <span class="val-unit">cm</span>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label"><span class="letter">F</span>Rise</span>
+                        <select class="op-select" id="size_f_op">
+                            <option value="">--</option>
+                            <option value=">">&ge;</option>
+                            <option value="<">&le;</option>
+                            <option value="~">&asymp;</option>
+                        </select>
+                        <input type="number" class="val-input" id="size_f_val" placeholder="--">
+                        <span class="val-unit">cm</span>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label"><span class="letter">G</span>Inseam</span>
+                        <select class="op-select" id="size_g_op">
+                            <option value="">--</option>
+                            <option value=">">&ge;</option>
+                            <option value="<">&le;</option>
+                            <option value="~">&asymp;</option>
+                        </select>
+                        <input type="number" class="val-input" id="size_g_val" placeholder="--">
+                        <span class="val-unit">cm</span>
+                    </div>
+                    <div class="sizing-legend">
+                        <span><strong>&ge;</strong> at least</span>
+                        <span><strong>&le;</strong> at most</span>
+                        <span><strong>&asymp;</strong> approximately</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeSizingModal()">Cancel</button>
+            <button class="btn btn-success" onclick="saveSizingProfile()">Save Profile</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let decks = [];
+    let currentDeckId = null;
+    let selectedSource = 'both';
+
+    async function loadDecks() {
+        const res = await fetch('/api/decks');
+        const data = await res.json();
+        decks = data.decks;
+        renderDecks();
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return 'Never';
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 60) return diffMins + 'm ago';
+        if (diffHours < 24) return diffHours + 'h ago';
+        return diffDays + 'd ago';
+    }
+
+    async function renderDecks() {
+        const grid = document.getElementById('decksGrid');
+        const newDeckCard = grid.querySelector('.new-deck-card');
+        grid.innerHTML = '';
+        grid.appendChild(newDeckCard);
+
+        for (const deck of decks) {
+            // Fetch keywords for this deck
+            const kwRes = await fetch(`/api/decks/${deck.id}/keywords`);
+            const kwData = await kwRes.json();
+            const keywords = kwData.keywords || [];
+
+            const card = document.createElement('div');
+            card.className = 'deck-card';
+            card.dataset.deckId = deck.id;
+
+            const isDefault = deck.id === 1;
+
+            card.innerHTML = `
+                <div class="deck-header" onclick="toggleDeck(${deck.id})">
+                    <span class="deck-name">${deck.name}</span>
+                    <span class="deck-stats">${keywords.length} keywords | ${deck.item_count || 0} items</span>
+                    <div class="deck-actions" onclick="event.stopPropagation()">
+                        <button class="deck-action profile" onclick="openSizingModal(${deck.id}, '${deck.name}')">Edit Profile</button>
+                        ${!isDefault ? `<button class="deck-action delete" onclick="deleteDeck(${deck.id})">Delete</button>` : ''}
+                    </div>
+                    <button class="deck-expand" id="expand-${deck.id}">▼</button>
+                </div>
+                <div class="deck-keywords" id="keywords-${deck.id}">
+                    <div class="keywords-grid">
+                        <div class="new-keyword-card-small" onclick="openKeywordModal(${deck.id}, '${deck.name}')">
+                            <div class="plus-icon">+</div>
+                            <div class="label">New Keyword</div>
+                        </div>
+                        ${keywords.map(kw => `
+                            <div class="keyword-card" data-keyword-id="${kw.id}">
+                                <div class="keyword-card-header">
+                                    <span class="keyword-text">${kw.keyword}</span>
+                                    <span class="source-badge ${kw.source}">${kw.source}</span>
+                                </div>
+                                <div class="keyword-stat">${kw.actual_item_count || 0} items</div>
+                                <div class="keyword-card-footer">
+                                    <button class="keyword-action scrape" onclick="scrapeKeyword(${kw.id})">Scrape</button>
+                                    <button class="keyword-action delete" onclick="deleteKeyword(${kw.id})">Delete</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            grid.appendChild(card);
+        }
+    }
+
+    function toggleDeck(deckId) {
+        const keywords = document.getElementById(`keywords-${deckId}`);
+        const expand = document.getElementById(`expand-${deckId}`);
+        keywords.classList.toggle('expanded');
+        expand.classList.toggle('expanded');
+    }
+
+    // Deck Modal
+    function openDeckModal() {
+        document.getElementById('deckModalOverlay').classList.add('active');
+        document.getElementById('deckNameInput').focus();
+    }
+
+    function closeDeckModal() {
+        document.getElementById('deckModalOverlay').classList.remove('active');
+        document.getElementById('deckNameInput').value = '';
+    }
+
+    async function addDeck() {
+        const input = document.getElementById('deckNameInput');
+        const name = input.value.trim();
+        if (!name) return;
+
+        await fetch('/api/decks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+
+        closeDeckModal();
+        loadDecks();
+    }
+
+    async function deleteDeck(deckId) {
+        if (!confirm('Delete this deck? Keywords will be moved to Default deck.')) return;
+        await fetch(`/api/decks/${deckId}`, { method: 'DELETE' });
+        loadDecks();
+    }
+
+    // Keyword Modal
+    function openKeywordModal(deckId, deckName) {
+        currentDeckId = deckId;
+        document.getElementById('keywordDeckName').textContent = deckName;
+        document.getElementById('keywordModalOverlay').classList.add('active');
+        document.getElementById('keywordInput').focus();
+        selectedSource = 'both';
+        document.querySelectorAll('.category-option').forEach(el => {
+            el.classList.toggle('selected', el.dataset.value === 'both');
+        });
+    }
+
+    function closeKeywordModal() {
+        document.getElementById('keywordModalOverlay').classList.remove('active');
+        document.getElementById('keywordInput').value = '';
+        currentDeckId = null;
+    }
+
+    function selectSource(el) {
+        document.querySelectorAll('.category-option').forEach(opt => opt.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedSource = el.dataset.value;
+    }
+
+    async function addKeyword() {
+        const input = document.getElementById('keywordInput');
+        const keyword = input.value.trim();
+        if (!keyword || !currentDeckId) return;
+
+        await fetch('/api/keywords', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ keyword, source: selectedSource, deck_id: currentDeckId })
+        });
+
+        closeKeywordModal();
+        loadDecks();
+    }
+
+    async function deleteKeyword(keywordId) {
+        await fetch(`/api/keywords/${keywordId}`, { method: 'DELETE' });
+        loadDecks();
+    }
+
+    async function scrapeKeyword(keywordId) {
+        document.getElementById('scrapeStatus').textContent = 'Scraping...';
+        document.getElementById('scrapeStatus').className = 'scrape-status running';
+        await fetch(`/api/scrape/${keywordId}`, { method: 'POST' });
+        pollStatus();
+    }
+
+    // Sizing Modal
+    function openSizingModal(deckId, deckName) {
+        currentDeckId = deckId;
+        document.getElementById('sizingDeckName').textContent = deckName;
+
+        // Load current sizing profile
+        fetch(`/api/decks/${deckId}`)
+            .then(res => res.json())
+            .then(deck => {
+                for (const key of ['a', 'b', 'c', 'd', 'e', 'f', 'g']) {
+                    const opSelect = document.getElementById(`size_${key}_op`);
+                    const valInput = document.getElementById(`size_${key}_val`);
+                    opSelect.value = deck[`size_${key}_op`] || '';
+                    valInput.value = deck[`size_${key}_val`] || '';
+                }
+            });
+
+        document.getElementById('sizingModalOverlay').classList.add('active');
+    }
+
+    function closeSizingModal() {
+        document.getElementById('sizingModalOverlay').classList.remove('active');
+        currentDeckId = null;
+    }
+
+    async function saveSizingProfile() {
+        if (!currentDeckId) return;
+
+        const sizing = {};
+        for (const key of ['a', 'b', 'c', 'd', 'e', 'f', 'g']) {
+            const op = document.getElementById(`size_${key}_op`).value || null;
+            const val = document.getElementById(`size_${key}_val`).value;
+            sizing[key] = { op, val: val ? parseInt(val) : null };
+        }
+
+        await fetch(`/api/decks/${currentDeckId}/sizing`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(sizing)
+        });
+
+        closeSizingModal();
+    }
+
+    // Scraping
+    async function scrapeAll() {
+        document.getElementById('scrapeStatus').textContent = 'Scraping all...';
+        document.getElementById('scrapeStatus').className = 'scrape-status running';
+        await fetch('/api/scrape', { method: 'POST' });
+        pollStatus();
+    }
+
+    async function pollStatus() {
+        const res = await fetch('/api/scrape/status');
+        const status = await res.json();
+
+        document.getElementById('scrapeStatus').textContent = status.message || 'Ready';
+
+        if (status.running) {
+            document.getElementById('scrapeStatus').className = 'scrape-status running';
+            setTimeout(pollStatus, 2000);
+        } else {
+            document.getElementById('scrapeStatus').className = 'scrape-status';
+            loadDecks();
+        }
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        const deckModalActive = document.getElementById('deckModalOverlay').classList.contains('active');
+        const keywordModalActive = document.getElementById('keywordModalOverlay').classList.contains('active');
+        const sizingModalActive = document.getElementById('sizingModalOverlay').classList.contains('active');
+
+        if (deckModalActive) {
+            if (e.key === 'Escape') closeDeckModal();
+            else if (e.key === 'Enter') addDeck();
+        } else if (keywordModalActive) {
+            if (e.key === 'Escape') closeKeywordModal();
+            else if (e.key === 'Enter') addKeyword();
+        } else if (sizingModalActive) {
+            if (e.key === 'Escape') closeSizingModal();
+        } else {
+            if (e.key === 'n' || e.key === 'N') {
+                e.preventDefault();
+                openDeckModal();
+            }
+        }
+    });
+
+    loadDecks();
+</script>
+{% endblock %}

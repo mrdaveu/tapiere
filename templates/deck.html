@@ -1,0 +1,1419 @@
+{% extends "base.html" %}
+
+{% block title %}Saved - Shopping Helper{% endblock %}
+
+{% block extra_head %}
+<style>
+    .saved-content {
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        min-height: calc(100vh - 48px);
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+
+    .header-controls {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .grid-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+        gap: 20px;
+        flex: 1;
+        align-content: start;
+    }
+
+    .grid-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: var(--shadow-sm);
+        position: relative;
+    }
+
+    .grid-card:hover {
+        border-color: var(--accent-primary);
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+
+    .grid-card img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        background: var(--bg-tertiary);
+    }
+
+    .grid-card-info {
+        padding: 14px;
+    }
+
+    .grid-card-title {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-bottom: 10px;
+        height: 36px;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .grid-card-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .grid-card-price {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .grid-card-stars {
+        color: var(--accent-warning);
+        font-size: 12px;
+    }
+
+    .cart-indicator {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        width: 24px;
+        height: 24px;
+        background: var(--accent-primary);
+        color: white;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 5;
+    }
+
+    .auction-tag {
+        background: var(--accent-warning);
+        color: white;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 2px 5px;
+        margin-left: 6px;
+    }
+
+    /* Split pane layout */
+    .split-container {
+        display: flex;
+        height: calc(100vh - 48px);
+        overflow: hidden;
+    }
+
+    .item-list-pane {
+        width: 280px;
+        min-width: 280px;
+        border-right: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-secondary);
+    }
+
+    .item-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+    }
+
+    .list-item {
+        display: flex;
+        gap: 12px;
+        padding: 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.15s;
+        margin-bottom: 4px;
+        color: var(--text-muted);
+    }
+
+    .list-item:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+    }
+
+    .list-item.active {
+        background: var(--accent-primary-light);
+        color: var(--text-primary);
+    }
+
+    .list-item.sold {
+        opacity: 0.5;
+    }
+
+    .list-item-thumb {
+        width: 48px;
+        height: 48px;
+        border-radius: 6px;
+        object-fit: cover;
+        background: var(--bg-tertiary);
+        flex-shrink: 0;
+    }
+
+    .list-item-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 4px;
+    }
+
+    .list-item-title {
+        font-size: 13px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .list-item-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+    }
+
+    .list-item-price {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .list-item-stars {
+        color: var(--accent-warning);
+        font-size: 11px;
+    }
+
+    .list-item-cart {
+        width: 16px;
+        height: 16px;
+        background: var(--accent-primary);
+        color: white;
+        border-radius: 3px;
+        font-size: 9px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    /* Right detail pane */
+    .detail-pane {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: var(--bg-primary);
+    }
+
+    .detail-pane-empty {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        font-size: 14px;
+    }
+
+    .detail-pane-content {
+        flex: 1;
+        display: flex;
+        overflow: hidden;
+    }
+
+    .detail-image-area {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-tertiary);
+        min-width: 0;
+        overflow: hidden;
+        position: relative;
+        overscroll-behavior: contain;
+    }
+
+    .detail-image-main {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        padding-bottom: 80px; /* Space for thumbnail bar */
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .detail-main-img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        border-radius: 8px;
+    }
+
+    .detail-thumbs-container {
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 8px;
+        background: var(--overlay-bg);
+        display: flex;
+        gap: 8px;
+        border-radius: 8px;
+        max-width: calc(100% - 32px);
+        width: fit-content;
+        justify-content: center;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .detail-thumbs-container::-webkit-scrollbar {
+        display: none;
+    }
+
+    .detail-thumb {
+        width: 48px;
+        height: 48px;
+        border-radius: 4px;
+        object-fit: cover;
+        cursor: pointer;
+        opacity: 0.6;
+        transition: opacity 0.15s;
+        flex-shrink: 0;
+    }
+
+    .detail-thumb:hover {
+        opacity: 0.9;
+    }
+
+    .detail-thumb.active {
+        opacity: 1;
+        outline: 2px solid var(--accent-primary);
+        outline-offset: 1px;
+    }
+
+    .detail-info-area {
+        width: 360px;
+        min-width: 360px;
+        padding: 24px;
+        overflow-y: auto;
+        border-left: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .detail-price-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .detail-price {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .auction-info {
+        margin-bottom: 16px;
+    }
+
+    .rating-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 20px;
+        padding: 12px 0;
+        border-top: 1px solid var(--border-color);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .rating-stars-display {
+        font-size: 18px;
+        color: var(--accent-warning);
+        cursor: pointer;
+        letter-spacing: 2px;
+    }
+
+    .rating-stars-display:hover {
+        opacity: 0.8;
+    }
+
+    .cart-toggle {
+        padding: 6px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        color: var(--text-secondary);
+        transition: all 0.15s;
+    }
+
+    .cart-toggle:hover {
+        border-color: var(--accent-primary);
+    }
+
+    .cart-toggle.active {
+        background: var(--accent-primary-light);
+        border-color: var(--accent-primary);
+        color: var(--accent-primary);
+    }
+
+    .detail-description-wrapper {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 20px;
+    }
+
+    .detail-description {
+        flex: 1;
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.6;
+        white-space: pre-wrap;
+        overflow-y: auto;
+        padding: 12px;
+        background: var(--bg-tertiary);
+        border-radius: 8px;
+    }
+
+    /* Dropdown styles */
+    .dropdown-wrapper {
+        position: relative;
+    }
+
+    .dropdown-trigger {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 12px;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .dropdown-trigger:hover {
+        border-color: var(--text-muted);
+    }
+
+    .dropdown-trigger .arrow {
+        font-size: 9px;
+        color: var(--text-muted);
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        min-width: 160px;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: var(--shadow-md);
+        z-index: 200;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-4px);
+        transition: all 0.15s;
+    }
+
+    .dropdown-wrapper.open .dropdown-menu {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .dropdown-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        font-size: 12px;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: background 0.1s;
+    }
+
+    .dropdown-item:first-child {
+        border-radius: 8px 8px 0 0;
+    }
+
+    .dropdown-item:last-child {
+        border-radius: 0 0 8px 8px;
+    }
+
+    .dropdown-item:hover {
+        background: var(--bg-hover);
+    }
+
+    .dropdown-item.selected {
+        background: var(--accent-primary-light);
+        color: var(--accent-primary);
+    }
+
+    .dropdown-divider {
+        height: 1px;
+        background: var(--border-light);
+        margin: 4px 0;
+    }
+
+    .dropdown-item.has-submenu {
+        position: relative;
+    }
+
+    .dropdown-item.has-submenu::after {
+        content: '›';
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .dropdown-submenu {
+        position: absolute;
+        top: -1px;
+        left: 100%;
+        min-width: 140px;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: var(--shadow-md);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.15s;
+        z-index: 300;
+    }
+
+    .dropdown-item.has-submenu:hover .dropdown-submenu {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .filter-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 8px;
+        background: var(--accent-primary-light);
+        color: var(--accent-primary);
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    .filter-badge .clear {
+        cursor: pointer;
+        opacity: 0.7;
+    }
+
+    .filter-badge .clear:hover {
+        opacity: 1;
+    }
+
+    /* Buttons */
+    .import-btn, .view-toggle-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 10px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        color: var(--text-secondary);
+    }
+
+    .import-btn:hover, .view-toggle-btn:hover {
+        background: var(--bg-hover);
+        border-color: var(--accent-primary);
+        color: var(--text-primary);
+    }
+
+    .import-btn svg, .view-toggle-btn svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .view-toggle-btn.active {
+        background: var(--accent-primary);
+        border-color: var(--accent-primary);
+        color: white;
+    }
+
+    /* Import modal */
+    .import-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.2s;
+    }
+
+    .import-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .import-modal {
+        background: var(--bg-secondary);
+        border-radius: 12px;
+        width: 90%;
+        max-width: 450px;
+        max-height: 70vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .import-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .import-header h2 {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .import-close {
+        background: none;
+        border: none;
+        font-size: 20px;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 0;
+    }
+
+    .import-close:hover {
+        color: var(--text-primary);
+    }
+
+    .import-body {
+        padding: 20px;
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .import-hint {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+    }
+
+    .import-textarea {
+        width: 100%;
+        height: 150px;
+        padding: 10px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        color: var(--text-primary);
+        font-size: 12px;
+        font-family: monospace;
+        resize: vertical;
+    }
+
+    .import-textarea:focus {
+        outline: none;
+        border-color: var(--accent-primary);
+    }
+
+    .import-footer {
+        padding: 12px 20px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    .import-footer button {
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .import-cancel {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+    }
+
+    .import-submit {
+        background: var(--accent-primary);
+        border: none;
+        color: white;
+    }
+
+    .import-submit:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .import-status {
+        margin-top: 12px;
+        padding: 10px;
+        border-radius: 6px;
+        font-size: 12px;
+    }
+
+    .import-status.success {
+        background: rgba(74, 222, 128, 0.1);
+        color: #4ade80;
+    }
+
+    .import-status.error {
+        background: rgba(248, 113, 113, 0.1);
+        color: #f87171;
+    }
+
+    /* Star rating popover */
+    .star-popover {
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 8px;
+        box-shadow: var(--shadow-md);
+        display: none;
+        z-index: 100;
+    }
+
+    .star-popover.active {
+        display: flex;
+        gap: 4px;
+    }
+
+    .star-popover-btn {
+        width: 32px;
+        height: 32px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+    }
+
+    .star-popover-btn:hover {
+        background: var(--accent-primary-light);
+        border-color: var(--accent-primary);
+    }
+
+    .rating-wrapper {
+        position: relative;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-wrapper">
+    <div class="topbar">
+        <button class="topbar-nav" onclick="history.back()" title="Go back">←</button>
+        <button class="topbar-nav" onclick="history.forward()" title="Go forward">→</button>
+        <span class="topbar-title">Saved Items</span>
+        <div style="flex: 1;"></div>
+        <button class="view-toggle-btn" id="viewToggleBtn" onclick="toggleView()" style="display: none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/>
+            </svg>
+            Back to Grid
+        </button>
+    </div>
+
+    <div class="content-area">
+        <!-- Grid View -->
+        <div class="saved-content" id="gridView">
+            <div class="page-header">
+                <div class="header-controls">
+                    <div class="dropdown-wrapper" id="sortDropdownGrid">
+                        <div class="dropdown-trigger" onclick="toggleDropdown('sortDropdownGrid')">
+                            <span id="sortLabelGrid">Newest</span>
+                            <span class="arrow">▼</span>
+                        </div>
+                        <div class="dropdown-menu">
+                            <div class="dropdown-item selected" data-sort="date-desc" onclick="selectSort('date-desc', 'Newest')">Newest</div>
+                            <div class="dropdown-item" data-sort="stars-desc" onclick="selectSort('stars-desc', 'Rating ↓')">Rating ↓</div>
+                            <div class="dropdown-item" data-sort="stars-asc" onclick="selectSort('stars-asc', 'Rating ↑')">Rating ↑</div>
+                            <div class="dropdown-item" data-sort="price-asc" onclick="selectSort('price-asc', 'Price ↑')">Price ↑</div>
+                            <div class="dropdown-item" data-sort="price-desc" onclick="selectSort('price-desc', 'Price ↓')">Price ↓</div>
+                        </div>
+                    </div>
+                    <div class="dropdown-wrapper" id="filterDropdownGrid">
+                        <div class="dropdown-trigger" onclick="toggleDropdown('filterDropdownGrid')">
+                            <span>Filter</span>
+                            <span class="arrow">▼</span>
+                        </div>
+                        <div class="dropdown-menu" id="filterMenuGrid">
+                            <div class="dropdown-item" onclick="applyFilter('cart', null)">Cart</div>
+                            <div class="dropdown-divider"></div>
+                            <div class="dropdown-item" onclick="applyFilter('stars', '5')">★★★★★</div>
+                            <div class="dropdown-item" onclick="applyFilter('stars', '4')">★★★★☆</div>
+                            <div class="dropdown-item" onclick="applyFilter('stars', '3')">★★★☆☆</div>
+                            <div class="dropdown-item" onclick="applyFilter('stars', '2')">★★☆☆☆</div>
+                            <div class="dropdown-item" onclick="applyFilter('stars', '1')">★☆☆☆☆</div>
+                            <div class="dropdown-divider"></div>
+                            <div id="deckFiltersGrid"></div>
+                        </div>
+                    </div>
+                    <button class="import-btn" onclick="openImportModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                        </svg>
+                        Import
+                    </button>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span id="itemCountGrid" style="color: var(--text-muted); font-size: 13px;"></span>
+                    <span id="filterBadgeGrid"></span>
+                </div>
+            </div>
+
+            <div class="grid-container" id="gridContainer"></div>
+
+            <div class="empty-state" id="emptyState" style="display: none;">
+                <h2>No saved items yet</h2>
+                <p>Save items from the New Items page to see them here.</p>
+                <p><a href="/new">Browse New Items</a></p>
+            </div>
+        </div>
+
+        <!-- List View (split pane) -->
+        <div class="split-container" id="listView" style="display: none;">
+            <div class="item-list-pane">
+                <div class="item-list" id="itemList"></div>
+            </div>
+
+            <div class="detail-pane" id="detailPane">
+                <div class="detail-pane-empty" id="detailEmpty">
+                    Select an item to view details
+                </div>
+                <div class="detail-pane-content" id="detailContent" style="display: none;">
+                    <div class="detail-image-area">
+                        <div class="detail-image-main">
+                            <img class="detail-main-img" id="detailImage" src="">
+                        </div>
+                        <div class="detail-thumbs-container" id="detailThumbs"></div>
+                    </div>
+                    <div class="detail-info-area" id="detailInfo"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Modal -->
+<div class="import-overlay" id="importOverlay" onclick="if(event.target === this) closeImportModal()">
+    <div class="import-modal">
+        <div class="import-header">
+            <h2>Import Items</h2>
+            <button class="import-close" onclick="closeImportModal()">×</button>
+        </div>
+        <div class="import-body">
+            <p class="import-hint">Paste Mercari or Yahoo Auction URLs (one per line)</p>
+            <textarea class="import-textarea" id="importUrls" placeholder="https://jp.mercari.com/item/..."></textarea>
+            <div id="importStatus"></div>
+        </div>
+        <div class="import-footer">
+            <button class="import-cancel" onclick="closeImportModal()">Cancel</button>
+            <button class="import-submit" id="importSubmitBtn" onclick="submitImport()">Import</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let items = [];
+    let currentItem = null;
+    let currentIndex = -1;
+    let currentImageIndex = 0;
+    let currentImages = [];
+    let itemDetailsCache = {};
+    let currentSort = 'date-desc';
+    let currentFilters = { stars: null, keyword: null, deck: null, cart: false };
+    let decksWithKeywords = [];
+    let starPopoverVisible = false;
+    let viewMode = 'grid'; // 'grid' or 'list'
+
+    function toggleView() {
+        if (viewMode === 'list') {
+            viewMode = 'grid';
+            document.getElementById('gridView').style.display = 'block';
+            document.getElementById('listView').style.display = 'none';
+            document.getElementById('viewToggleBtn').style.display = 'none';
+        }
+    }
+
+    function switchToListView(index) {
+        viewMode = 'list';
+        document.getElementById('gridView').style.display = 'none';
+        document.getElementById('listView').style.display = 'flex';
+        document.getElementById('viewToggleBtn').style.display = 'flex';
+        renderList();
+        showDetail(index);
+    }
+
+    function toggleDropdown(id) {
+        const wrapper = document.getElementById(id);
+        const isOpen = wrapper.classList.contains('open');
+        document.querySelectorAll('.dropdown-wrapper').forEach(w => w.classList.remove('open'));
+        if (!isOpen) wrapper.classList.add('open');
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.dropdown-wrapper')) {
+            document.querySelectorAll('.dropdown-wrapper').forEach(w => w.classList.remove('open'));
+        }
+        if (!e.target.closest('.rating-wrapper')) {
+            hideStarPopover();
+        }
+    });
+
+    function selectSort(value, label) {
+        currentSort = value;
+        document.getElementById('sortLabelGrid').textContent = label;
+        document.querySelectorAll('.dropdown-item[data-sort]').forEach(item => {
+            item.classList.toggle('selected', item.dataset.sort === value);
+        });
+        document.querySelectorAll('.dropdown-wrapper').forEach(w => w.classList.remove('open'));
+        loadItems();
+    }
+
+    function applyFilter(type, value) {
+        document.querySelectorAll('.dropdown-wrapper').forEach(w => w.classList.remove('open'));
+        if (type === 'cart') {
+            currentFilters.cart = !currentFilters.cart;
+        } else if (type === 'stars') {
+            currentFilters.stars = currentFilters.stars === value ? null : value;
+        } else if (type === 'deck') {
+            currentFilters.deck = currentFilters.deck === value ? null : value;
+            currentFilters.keyword = null;
+        } else if (type === 'keyword') {
+            currentFilters.keyword = currentFilters.keyword === value ? null : value;
+            currentFilters.deck = null;
+        }
+        loadItems();
+        updateFilterBadges();
+    }
+
+    function clearFilter(type) {
+        if (type === 'cart') currentFilters.cart = false;
+        else if (type === 'stars') currentFilters.stars = null;
+        else if (type === 'deck') currentFilters.deck = null;
+        else if (type === 'keyword') currentFilters.keyword = null;
+        else currentFilters = { stars: null, keyword: null, deck: null, cart: false };
+        loadItems();
+        updateFilterBadges();
+    }
+
+    function updateFilterBadges() {
+        const badges = [];
+        if (currentFilters.cart) {
+            badges.push(`<span class="filter-badge">Cart <span class="clear" onclick="clearFilter('cart')">×</span></span>`);
+        }
+        if (currentFilters.stars) {
+            badges.push(`<span class="filter-badge">${'★'.repeat(parseInt(currentFilters.stars))} <span class="clear" onclick="clearFilter('stars')">×</span></span>`);
+        }
+        if (currentFilters.deck) {
+            const deck = decksWithKeywords.find(d => d.id == currentFilters.deck);
+            const label = deck ? deck.name : 'Deck';
+            badges.push(`<span class="filter-badge">${label} <span class="clear" onclick="clearFilter('deck')">×</span></span>`);
+        }
+        if (currentFilters.keyword) {
+            let kwName = 'Keyword';
+            for (const deck of decksWithKeywords) {
+                const kw = deck.keywords.find(k => k.id == currentFilters.keyword);
+                if (kw) { kwName = kw.keyword; break; }
+            }
+            badges.push(`<span class="filter-badge">${kwName} <span class="clear" onclick="clearFilter('keyword')">×</span></span>`);
+        }
+        document.getElementById('filterBadgeGrid').innerHTML = badges.join(' ');
+    }
+
+    async function loadDecksWithKeywords() {
+        try {
+            const res = await fetch('/api/decks-with-keywords');
+            const data = await res.json();
+            decksWithKeywords = data.decks;
+            renderDeckFilters();
+        } catch (e) {
+            console.error('Failed to load decks:', e);
+        }
+    }
+
+    function renderDeckFilters() {
+        if (decksWithKeywords.length === 0) {
+            document.getElementById('deckFiltersGrid').innerHTML = '';
+            document.getElementById('deckFiltersList').innerHTML = '';
+            return;
+        }
+        const html = decksWithKeywords.map(deck => {
+            const keywords = deck.keywords || [];
+            if (keywords.length === 0) {
+                return `<div class="dropdown-item" onclick="applyFilter('deck', '${deck.id}')">${deck.name}</div>`;
+            }
+            return `
+                <div class="dropdown-item has-submenu">
+                    ${deck.name}
+                    <div class="dropdown-submenu">
+                        <div class="dropdown-item" onclick="event.stopPropagation(); applyFilter('deck', '${deck.id}')">All in ${deck.name}</div>
+                        <div class="dropdown-divider"></div>
+                        ${keywords.map(kw => `
+                            <div class="dropdown-item" onclick="event.stopPropagation(); applyFilter('keyword', '${kw.id}')">${kw.keyword}</div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }).join('');
+        document.getElementById('deckFiltersGrid').innerHTML = html;
+    }
+
+    async function loadItems() {
+        const [field, order] = currentSort.split('-');
+        let url = `/api/items/saved?sort=${field}&order=${order}`;
+        if (currentFilters.cart) url += `&filter_cart=1`;
+        if (currentFilters.stars) url += `&filter_stars=${currentFilters.stars}`;
+        if (currentFilters.deck) url += `&filter_deck=${currentFilters.deck}`;
+        if (currentFilters.keyword) url += `&filter_keyword=${currentFilters.keyword}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        items = data.items;
+
+        document.getElementById('itemCountGrid').textContent = `${items.length} Items`;
+        
+        if (viewMode === 'grid') {
+            renderGrid();
+        } else {
+            renderList();
+            if (items.length > 0 && currentIndex === -1) {
+                showDetail(0);
+            } else if (items.length === 0) {
+                currentIndex = -1;
+                currentItem = null;
+                document.getElementById('detailEmpty').style.display = 'flex';
+                document.getElementById('detailContent').style.display = 'none';
+            }
+        }
+    }
+
+    function renderGrid() {
+        const container = document.getElementById('gridContainer');
+        const empty = document.getElementById('emptyState');
+
+        if (items.length === 0) {
+            container.style.display = 'none';
+            empty.style.display = 'block';
+            return;
+        }
+
+        container.style.display = 'grid';
+        empty.style.display = 'none';
+
+        container.innerHTML = items.map((item, i) => {
+            const isSold = item.sold_status && item.sold_status !== 'available' && item.sold_status !== 'unknown';
+            const isAuction = item.is_auction && item.source === 'yahoo';
+            const stars = item.stars ? '★'.repeat(item.stars) : '☆☆☆☆☆';
+            return `
+                <div class="grid-card ${isSold ? 'sold' : ''}" onclick="switchToListView(${i})">
+                    ${item.in_cart ? '<span class="cart-indicator">C</span>' : ''}
+                    <img src="${item.image_url || ''}" onerror="this.style.background='var(--bg-tertiary)'">
+                    <div class="grid-card-info">
+                        <div class="grid-card-title">${item.title || 'Untitled'}</div>
+                        <div class="grid-card-meta">
+                            <span class="grid-card-price">¥${(item.price || 0).toLocaleString()}${isAuction ? '<span class="auction-tag">A</span>' : ''}</span>
+                            <span class="grid-card-stars">${stars}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderList() {
+        const container = document.getElementById('itemList');
+
+        if (items.length === 0) {
+            container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">No saved items</div>';
+            return;
+        }
+
+        container.innerHTML = items.map((item, i) => {
+            const isSold = item.sold_status && item.sold_status !== 'available' && item.sold_status !== 'unknown';
+            const isAuction = item.is_auction && item.source === 'yahoo';
+            const stars = item.stars ? '★'.repeat(item.stars) : '';
+            return `
+                <div class="list-item ${i === currentIndex ? 'active' : ''} ${isSold ? 'sold' : ''}" onclick="showDetail(${i})">
+                    <img class="list-item-thumb" src="${item.image_url || ''}" onerror="this.style.background='var(--bg-tertiary)'">
+                    <div class="list-item-info">
+                        <div class="list-item-title">${item.title || 'Untitled'}</div>
+                        <div class="list-item-meta">
+                            <span class="list-item-price">¥${(item.price || 0).toLocaleString()}${isAuction ? '<span class="auction-tag">A</span>' : ''}</span>
+                            <span class="list-item-stars">${stars}</span>
+                        </div>
+                    </div>
+                    ${item.in_cart ? '<span class="list-item-cart">C</span>' : ''}
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function fetchItemDetails(itemId) {
+        if (itemDetailsCache[itemId]) return itemDetailsCache[itemId];
+        try {
+            const res = await fetch(`/api/items/${itemId}/details`);
+            const data = await res.json();
+            itemDetailsCache[itemId] = data;
+            return data;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function showDetail(index) {
+        currentIndex = index;
+        currentItem = items[index];
+        currentImageIndex = 0;
+
+        renderList();
+
+        document.getElementById('detailEmpty').style.display = 'none';
+        document.getElementById('detailContent').style.display = 'flex';
+
+        const details = await fetchItemDetails(currentItem.id);
+
+        currentImages = [];
+        if (details) {
+            for (let i = 1; i <= 20; i++) {
+                const imgUrl = details[`img_url_${i}`];
+                if (imgUrl) currentImages.push(imgUrl);
+            }
+        }
+        if (currentImages.length === 0 && currentItem.image_url) {
+            currentImages = [currentItem.image_url];
+        }
+
+        document.getElementById('detailImage').src = currentImages[0] || '';
+        renderThumbnails();
+        renderDetailInfo(details);
+
+        refreshSoldStatus(currentItem.id);
+
+        // Preload adjacent items
+        if (index > 0) fetchItemDetails(items[index - 1].id);
+        if (index < items.length - 1) fetchItemDetails(items[index + 1].id);
+
+        const listItem = document.querySelectorAll('.list-item')[index];
+        if (listItem) listItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    function renderThumbnails() {
+        const container = document.getElementById('detailThumbs');
+        if (currentImages.length <= 1) {
+            container.style.display = 'none';
+            return;
+        }
+        container.style.display = 'flex';
+        container.innerHTML = currentImages.map((img, i) => `
+            <img class="detail-thumb ${i === currentImageIndex ? 'active' : ''}" src="${img}" onclick="setImage(${i})">
+        `).join('');
+
+        // Convert vertical scroll to horizontal and prevent bubbling
+        container.onwheel = (e) => {
+            if (e.deltaY !== 0) {
+                e.preventDefault();
+                container.scrollLeft += e.deltaY;
+            }
+        };
+    }
+
+    function setImage(index) {
+        currentImageIndex = index;
+        document.getElementById('detailImage').src = currentImages[index];
+        document.querySelectorAll('.detail-thumb').forEach((el, i) => {
+            el.classList.toggle('active', i === index);
+            if (i === index) {
+                el.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+            }
+        });
+    }
+
+    function formatAuctionTime(endTime) {
+        if (!endTime) return null;
+        const diff = endTime * 1000 - Date.now();
+        if (diff < 0) return 'Ended';
+        const hours = Math.floor(diff / 3600000);
+        const minutes = Math.floor((diff % 3600000) / 60000);
+        if (hours > 24) return Math.floor(hours / 24) + 'd ' + (hours % 24) + 'h';
+        return hours > 0 ? hours + 'h ' + minutes + 'm' : minutes + 'm';
+    }
+
+    function renderDetailInfo(details) {
+        const date = currentItem.scraped_at ? new Date(currentItem.scraped_at).toLocaleDateString() : '';
+        const description = details?.description || currentItem.description || '';
+        const isSold = currentItem.sold_status && currentItem.sold_status !== 'available' && currentItem.sold_status !== 'unknown';
+        const isAuction = currentItem.is_auction && currentItem.source === 'yahoo';
+        const auctionTime = formatAuctionTime(currentItem.auction_end_time);
+        const stars = currentItem.stars || 0;
+        const starsDisplay = stars > 0 ? '★'.repeat(stars) + '☆'.repeat(5 - stars) : '☆☆☆☆☆';
+
+        let auctionHtml = '';
+        if (currentItem.source === 'yahoo') {
+            if (isAuction && auctionTime) {
+                const isEndingSoon = currentItem.auction_end_time && (currentItem.auction_end_time * 1000 - Date.now()) < 3600000;
+                auctionHtml = `<div class="auction-info ${isEndingSoon ? 'ending-soon' : ''}">Auction ends ${auctionTime}</div>`;
+            } else if (!isAuction) {
+                auctionHtml = '<div class="auction-info">Buy It Now</div>';
+            }
+        }
+
+        let soldHtml = '';
+        if (isSold) {
+            const statusText = {sold: 'SOLD', trading: 'TRADING', cancelled: 'CANCELLED', ended: 'ENDED'}[currentItem.sold_status] || 'UNAVAILABLE';
+            soldHtml = `<span class="sold-badge">${statusText}</span>`;
+        }
+
+        document.getElementById('detailInfo').innerHTML = `
+            <h2 class="detail-title">${currentItem.title || 'Untitled'}</h2>
+            <div class="detail-price-row">
+                <span class="detail-price">¥${(currentItem.price || 0).toLocaleString()}</span>
+                ${soldHtml}
+            </div>
+            ${auctionHtml}
+            <div class="detail-meta">
+                <a href="${currentItem.url}" target="_blank" class="source-badge ${currentItem.source}" style="text-decoration: none;">${currentItem.source} ↗</a>
+                <span style="font-size: 12px; color: var(--text-muted);">${date}</span>
+            </div>
+            <div class="rating-row">
+                <div class="rating-wrapper">
+                    <span class="rating-stars-display" onclick="toggleStarPopover()">${starsDisplay}</span>
+                    <div class="star-popover" id="starPopover">
+                        ${[1,2,3,4,5].map(n => `<button class="star-popover-btn" onclick="rateItem(${n})">${n}</button>`).join('')}
+                    </div>
+                </div>
+                <button class="cart-toggle ${currentItem.in_cart ? 'active' : ''}" onclick="toggleCart()">
+                    ${currentItem.in_cart ? 'In Cart' : 'Add to Cart'}
+                </button>
+            </div>
+            ${description ? `<div class="detail-description-wrapper"><div class="detail-description">${description}</div></div>` : ''}
+            <div class="detail-actions">
+                <button class="detail-remove" onclick="removeItem()">Remove <kbd>R</kbd></button>
+            </div>
+        `;
+    }
+
+    function toggleStarPopover() {
+        const popover = document.getElementById('starPopover');
+        starPopoverVisible = !starPopoverVisible;
+        popover.classList.toggle('active', starPopoverVisible);
+    }
+
+    function hideStarPopover() {
+        starPopoverVisible = false;
+        const popover = document.getElementById('starPopover');
+        if (popover) popover.classList.remove('active');
+    }
+
+    async function refreshSoldStatus(itemId) {
+        try {
+            const item = items.find(i => i.id === itemId);
+            if (!item) return;
+            const res = await fetch('/api/items/' + itemId + '/refresh-status', { method: 'POST' });
+            const data = await res.json();
+            if (data.changed) {
+                item.sold_status = data.sold_status;
+                if (data.price) item.price = data.price;
+                if (data.is_auction !== undefined) item.is_auction = data.is_auction;
+                if (data.auction_end_time !== undefined) item.auction_end_time = data.auction_end_time;
+                if (viewMode === 'grid') renderGrid(); else renderList();
+                if (currentItem && currentItem.id === itemId) {
+                    Object.assign(currentItem, { sold_status: data.sold_status, price: data.price || currentItem.price });
+                    renderDetailInfo(itemDetailsCache[itemId]);
+                }
+            }
+        } catch (e) {
+            console.error('Failed to refresh status:', e);
+        }
+    }
+
+    async function rateItem(stars) {
+        hideStarPopover();
+        await fetch(`/api/items/${currentItem.id}/rate`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stars })
+        });
+        currentItem.stars = stars;
+        items[currentIndex].stars = stars;
+        renderDetailInfo(itemDetailsCache[currentItem.id]);
+        renderList();
+    }
+
+    async function toggleCart() {
+        const newStatus = !currentItem.in_cart;
+        await fetch(`/api/items/${currentItem.id}/cart`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ in_cart: newStatus })
+        });
+        currentItem.in_cart = newStatus;
+        items[currentIndex].in_cart = newStatus;
+        renderDetailInfo(itemDetailsCache[currentItem.id]);
+        renderList();
+    }
+
+    async function removeItem() {
+        await fetch(`/api/items/${currentItem.id}/unsave`, { method: 'POST' });
+        items.splice(currentIndex, 1);
+        if (items.length === 0) {
+            currentIndex = -1;
+            currentItem = null;
+            document.getElementById('detailEmpty').style.display = 'flex';
+            document.getElementById('detailContent').style.display = 'none';
+        } else if (currentIndex >= items.length) {
+            showDetail(items.length - 1);
+        } else {
+            showDetail(currentIndex);
+        }
+        renderList();
+        document.getElementById('itemCountGrid').textContent = `${items.length} Items`;
+            }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        if (document.getElementById('importOverlay').classList.contains('active')) {
+            if (e.key === 'Escape') closeImportModal();
+            return;
+        }
+
+        if (viewMode === 'list') {
+            if (e.key === 'Escape') {
+                hideStarPopover();
+                toggleView(); // Back to grid
+            } else if (e.key === 'j' || e.key === 'J' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (currentIndex > 0) showDetail(currentIndex - 1);
+            } else if (e.key === 'k' || e.key === 'K' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (currentIndex < items.length - 1) showDetail(currentIndex + 1);
+            } else if (e.key === 'ArrowLeft') {
+                if (currentImageIndex > 0) setImage(currentImageIndex - 1);
+            } else if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                if (currentImageIndex < currentImages.length - 1) setImage(currentImageIndex + 1);
+            } else if (e.key >= '1' && e.key <= '5' && currentItem) {
+                rateItem(parseInt(e.key));
+            } else if ((e.key === 'c' || e.key === 'C') && currentItem) {
+                toggleCart();
+            } else if ((e.key === 'r' || e.key === 'R') && currentItem) {
+                removeItem();
+            }
+        }
+    });
+
+    // Import modal
+    function openImportModal() {
+        document.getElementById('importOverlay').classList.add('active');
+        document.getElementById('importUrls').value = '';
+        document.getElementById('importStatus').innerHTML = '';
+        document.getElementById('importUrls').focus();
+    }
+
+    function closeImportModal() {
+        document.getElementById('importOverlay').classList.remove('active');
+    }
+
+    async function submitImport() {
+        const textarea = document.getElementById('importUrls');
+        const statusDiv = document.getElementById('importStatus');
+        const submitBtn = document.getElementById('importSubmitBtn');
+        const text = textarea.value.trim();
+        if (!text) {
+            statusDiv.innerHTML = '<div class="import-status error">Please paste at least one URL</div>';
+            return;
+        }
+        const urls = text.split(/[\n\r]+/).map(u => u.trim()).filter(u => u.length > 0);
+        if (urls.length === 0) {
+            statusDiv.innerHTML = '<div class="import-status error">No valid URLs found</div>';
+            return;
+        }
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Importing...';
+        statusDiv.innerHTML = '<div class="import-status" style="color: var(--text-muted)">Importing...</div>';
+        try {
+            const res = await fetch('/api/items/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ urls })
+            });
+            const data = await res.json();
+            if (data.imported > 0) {
+                statusDiv.innerHTML = `<div class="import-status success">Imported ${data.imported} item(s)</div>`;
+                setTimeout(() => { closeImportModal(); loadItems(); }, 800);
+            } else {
+                const errors = data.results.filter(r => !r.success).map(r => r.error || 'Unknown');
+                statusDiv.innerHTML = `<div class="import-status error">Failed: ${errors[0]}</div>`;
+            }
+        } catch (err) {
+            statusDiv.innerHTML = `<div class="import-status error">Error: ${err.message}</div>`;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Import';
+        }
+    }
+
+    loadItems();
+    loadDecksWithKeywords();
+</script>
+{% endblock %}

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to TAPIERE</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .onboarding-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .onboarding-container {
+            max-width: 400px;
+            width: 100%;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .onboarding-logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            margin-bottom: 3rem;
+        }
+
+        .onboarding-container h1 {
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .onboarding-container p {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .hint {
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+            margin-top: 0.5rem;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 1rem;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            padding: 0.75rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .username-prefix {
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            overflow: hidden;
+        }
+
+        .username-prefix span {
+            padding: 0.875rem 1rem;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border-right: 1px solid var(--border-color);
+        }
+
+        .username-prefix input {
+            border: none;
+            background: transparent;
+        }
+
+        .username-prefix input:focus {
+            outline: none;
+        }
+    </style>
+</head>
+<body class="onboarding-page">
+    <div class="onboarding-container">
+        <div class="onboarding-logo">TAPIERE</div>
+
+        <h1>Welcome!</h1>
+        <p>Choose a username for your public profile</p>
+
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+        <div class="form-group">
+            <label for="usernameInput">Username</label>
+            <div class="username-prefix">
+                <span>tapiere.com/u/</span>
+                <input type="text" id="usernameInput" placeholder="yourname" maxlength="20" autofocus>
+            </div>
+            <p class="hint">3-20 characters. Lowercase letters, numbers, underscores, and hyphens only.</p>
+        </div>
+
+        <button class="btn-primary" id="submitBtn" onclick="setUsername()">Continue</button>
+    </div>
+
+    <script>
+        const input = document.getElementById('usernameInput');
+        const errorEl = document.getElementById('errorMessage');
+        const submitBtn = document.getElementById('submitBtn');
+
+        // Validate on input
+        input.addEventListener('input', () => {
+            let val = input.value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+            input.value = val;
+            errorEl.style.display = 'none';
+        });
+
+        // Handle Enter key
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') setUsername();
+        });
+
+        async function setUsername() {
+            const username = input.value.trim();
+
+            if (username.length < 3) {
+                showError('Username must be at least 3 characters');
+                return;
+            }
+
+            if (username.length > 20) {
+                showError('Username must be 20 characters or less');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Setting up...';
+
+            try {
+                const res = await fetch('/api/auth/set-username', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    window.location.href = '/';
+                } else {
+                    showError(data.detail || 'Something went wrong');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Continue';
+                }
+            } catch (e) {
+                showError('Something went wrong. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Continue';
+            }
+        }
+
+        function showError(msg) {
+            errorEl.textContent = msg;
+            errorEl.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

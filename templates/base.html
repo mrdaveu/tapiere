@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Shopping Helper{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/shared.js"></script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-header">
+            <div class="navbar-logo">
+                <div class="navbar-logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
+                <span>TAPIERE</span>
+            </div>
+        </div>
+        <div class="navbar-menu">
+            <a href="/" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+                <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span>
+                Dashboard
+            </a>
+            <a href="/new" class="nav-item {% if active_page == 'new' %}active{% endif %}">
+                <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v18M3 12h18M5.636 5.636l12.728 12.728M18.364 5.636L5.636 18.364"/><circle cx="12" cy="12" r="2"/></svg></span>
+                New Items
+                <span class="nav-badge" id="navUnseenBadge" style="display: none;">0</span>
+            </a>
+            <a href="/review" class="nav-item {% if active_page == 'review' %}active{% endif %}">
+                <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+                Review
+            </a>
+            <a href="/saved" class="nav-item {% if active_page == 'saved' %}active{% endif %}">
+                <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span>
+                Saved
+            </a>
+
+            <!-- Decks Section -->
+            <div class="nav-section-header">
+                <span>Decks</span>
+                <button class="nav-section-add" onclick="openNewDeckModal()" title="New Deck">+</button>
+            </div>
+            <div class="nav-decks-list" id="navDecksList">
+                <!-- Decks loaded dynamically -->
+            </div>
+        </div>
+        <div class="navbar-footer">
+            {% if user %}
+            <div class="user-info">
+                <span class="user-name">@{{ user.username or user.email }}</span>
+                {% if user.id == 1 %}
+                <a href="/admin/invites" class="nav-admin-link" title="Admin">Invites</a>
+                {% endif %}
+                <button class="btn-logout" onclick="logout()">Sign Out</button>
+            </div>
+            {% endif %}
+            <div class="theme-toggle">
+                <span>Theme</span>
+                <div class="theme-switch" onclick="toggleTheme()"></div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- New Deck Modal (global) -->
+    <div class="modal-overlay" id="newDeckModalOverlay" onclick="if(event.target === this) closeNewDeckModal()">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">New Deck</h3>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <input type="text" class="form-input" id="newDeckNameInput" placeholder="Deck name...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeNewDeckModal()">Cancel</button>
+                <button class="btn btn-success" onclick="createNewDeck()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    {% block content %}{% endblock %}
+
+    <script>
+        // Get active deck ID from URL if on keywords page
+        function getActiveDeckId() {
+            const match = window.location.pathname.match(/\/keywords\/(\d+)/);
+            return match ? parseInt(match[1]) : null;
+        }
+
+        // Load decks in sidebar
+        async function loadNavDecks() {
+            try {
+                const res = await fetch('/api/decks');
+                const data = await res.json();
+                const list = document.getElementById('navDecksList');
+                if (!list) return;
+
+                const activeDeckId = getActiveDeckId();
+
+                list.innerHTML = data.decks.map(deck => `
+                    <a href="/keywords/${deck.id}" class="nav-item nav-deck-item ${deck.id === activeDeckId ? 'active' : ''}" data-deck-id="${deck.id}">
+                        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20"/></svg></span>
+                        <span class="nav-deck-name">${deck.name}</span>
+                        <span class="nav-deck-count">${deck.keyword_count || 0}</span>
+                    </a>
+                `).join('');
+            } catch (e) {
+                console.error('Failed to load decks:', e);
+            }
+        }
+
+        function openNewDeckModal() {
+            document.getElementById('newDeckModalOverlay').classList.add('active');
+            document.getElementById('newDeckNameInput').focus();
+        }
+
+        function closeNewDeckModal() {
+            document.getElementById('newDeckModalOverlay').classList.remove('active');
+            document.getElementById('newDeckNameInput').value = '';
+        }
+
+        async function createNewDeck() {
+            const input = document.getElementById('newDeckNameInput');
+            const name = input.value.trim();
+            if (!name) return;
+
+            await fetch('/api/decks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+
+            closeNewDeckModal();
+            loadNavDecks();
+        }
+
+        // Handle Enter key in deck modal
+        document.getElementById('newDeckNameInput')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') createNewDeck();
+            else if (e.key === 'Escape') closeNewDeckModal();
+        });
+
+        // Load unseen count for sidebar badge
+        async function loadUnseenCount() {
+            try {
+                const res = await fetch('/api/stats');
+                const stats = await res.json();
+                const badge = document.getElementById('navUnseenBadge');
+                if (badge && stats.unseen_items > 0) {
+                    badge.textContent = stats.unseen_items;
+                    badge.style.display = 'inline-flex';
+                } else if (badge) {
+                    badge.style.display = 'none';
+                }
+            } catch (e) {
+                console.error('Failed to load unseen count:', e);
+            }
+        }
+
+        // Load decks on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadNavDecks();
+            loadUnseenCount();
+        });
+
+        // Logout function
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/';
+        }
+    </script>
+
+    <style>
+        .user-info {
+            padding: 0.75rem 1rem;
+            border-top: 1px solid var(--border-color);
+            margin-bottom: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .user-name {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .nav-admin-link {
+            font-size: 0.8rem;
+            color: var(--accent-color);
+            text-decoration: none;
+        }
+
+        .nav-admin-link:hover {
+            text-decoration: underline;
+        }
+
+        .btn-logout {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.4rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-logout:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+    </style>
+</body>
+</html>

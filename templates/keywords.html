@@ -1,0 +1,947 @@
+{% extends "base.html" %}
+
+{% block title %}{{ deck.name }} - Keywords{% endblock %}
+
+{% block extra_head %}
+<style>
+    .keywords-content {
+        padding: 32px;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+
+    .page-header-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .page-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .deck-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .scrape-status {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-right: 12px;
+    }
+
+    .scrape-status.running {
+        color: var(--accent-warning);
+    }
+
+    /* Keywords grid */
+    .keywords-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+    }
+
+    /* Keyword card */
+    .keyword-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 16px;
+        min-height: 140px;
+        display: flex;
+        flex-direction: column;
+        transition: all 0.2s;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .keyword-card:hover {
+        border-color: var(--accent-primary);
+        box-shadow: var(--shadow-md);
+    }
+
+    .keyword-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .keyword-text {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+        word-break: break-word;
+    }
+
+    .keyword-meta {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .keyword-stat {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .keyword-categories {
+        flex: 1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-bottom: 12px;
+    }
+
+    .keyword-category-tag {
+        font-size: 10px;
+        padding: 2px 6px;
+        background: var(--accent-primary-light);
+        color: var(--accent-primary);
+        border-radius: 4px;
+    }
+
+    .keyword-hidden-tag {
+        font-size: 10px;
+        padding: 2px 6px;
+        background: var(--accent-danger-light);
+        color: var(--accent-danger);
+        border-radius: 4px;
+    }
+
+    .keyword-card-footer {
+        display: flex;
+        gap: 8px;
+        margin-top: auto;
+    }
+
+    .keyword-action {
+        flex: 1;
+        padding: 8px;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .keyword-action.scrape {
+        background: var(--accent-primary);
+        color: white;
+    }
+
+    .keyword-action.edit {
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+    }
+
+    .keyword-action.edit:hover {
+        background: var(--bg-hover);
+    }
+
+    .keyword-action.delete {
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+    }
+
+    .keyword-action.delete:hover {
+        background: var(--accent-danger);
+        color: white;
+    }
+
+    /* New keyword card */
+    .new-keyword-card {
+        background: var(--bg-secondary);
+        border: 2px dashed var(--border-color);
+        border-radius: 12px;
+        min-height: 140px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .new-keyword-card:hover {
+        border-color: var(--accent-primary);
+        background: var(--bg-hover);
+    }
+
+    .new-keyword-card .plus-icon {
+        width: 40px;
+        height: 40px;
+        background: var(--bg-tertiary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        color: var(--text-muted);
+        transition: all 0.2s;
+    }
+
+    .new-keyword-card:hover .plus-icon {
+        background: var(--accent-primary);
+        color: white;
+    }
+
+    .new-keyword-card .label {
+        font-size: 13px;
+        color: var(--text-muted);
+    }
+
+    /* Keyword Modal */
+    .keyword-modal {
+        max-width: 600px;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .keyword-modal .modal-body {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .keyword-modal .modal-header {
+        position: relative;
+        padding-right: 40px;
+        margin-bottom: 0;
+    }
+
+    .modal-close {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: var(--bg-tertiary);
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 18px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .modal-close:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+    }
+
+    .keyword-input-large {
+        width: 100%;
+        padding: 16px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 16px;
+        margin-bottom: 16px;
+    }
+
+    .keyword-input-large::placeholder {
+        color: var(--text-muted);
+    }
+
+    .keyword-input-large:focus {
+        outline: none;
+        border-color: var(--accent-primary);
+    }
+
+    /* Category sections */
+    .category-section {
+        margin-bottom: 20px;
+    }
+
+    .category-section-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .category-section-header .loading {
+        font-size: 11px;
+        font-weight: 400;
+        color: var(--accent-warning);
+    }
+
+    .category-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .category-tag {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        background: var(--bg-primary);
+        color: var(--text-secondary);
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .category-tag:hover {
+        border-color: var(--accent-primary);
+    }
+
+    .category-tag.selected {
+        background: var(--accent-primary);
+        border-color: var(--accent-primary);
+        color: white;
+    }
+
+    .category-tag .checkmark {
+        display: none;
+    }
+
+    .category-tag.selected .checkmark {
+        display: inline;
+    }
+
+    /* Hidden categories */
+    .hidden-category-tag {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border: 1px solid var(--accent-danger);
+        border-radius: 20px;
+        background: var(--accent-danger-light);
+        color: var(--accent-danger);
+        font-size: 12px;
+    }
+
+    .hidden-category-remove {
+        width: 16px;
+        height: 16px;
+        border: none;
+        background: var(--accent-danger);
+        color: white;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .hidden-category-remove:hover {
+        opacity: 0.8;
+    }
+
+    .empty-hidden {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-style: italic;
+    }
+
+    /* Modal footer */
+    .keyword-modal .modal-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-light);
+    }
+
+    .btn-delete {
+        background: transparent;
+        border: 1px solid var(--accent-danger);
+        color: var(--accent-danger);
+    }
+
+    .btn-delete:hover {
+        background: var(--accent-danger);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-wrapper">
+    <!-- Topbar -->
+    <div class="topbar">
+        <button class="topbar-nav" onclick="history.back()" title="Go back">&#8592;</button>
+        <button class="topbar-nav" onclick="history.forward()" title="Go forward">&#8594;</button>
+        <span class="topbar-title" id="deckTitle">Loading...</span>
+    </div>
+
+    <div class="content-area">
+        <div class="keywords-content">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <span class="scrape-status" id="scrapeStatus">Ready</span>
+                    <button class="btn btn-primary" onclick="scrapeAll()">Scrape All</button>
+                </div>
+                <div class="deck-actions">
+                    <button class="btn" onclick="openSizingModal()">Edit Profile</button>
+                    <button class="btn btn-ghost" onclick="deleteDeck()" id="deleteDeckBtn" style="display:none;">Delete Deck</button>
+                </div>
+            </div>
+
+            <div class="keywords-grid" id="keywordsGrid">
+                <!-- New keyword card -->
+                <div class="new-keyword-card" onclick="openKeywordModal()">
+                    <div class="plus-icon">+</div>
+                    <div class="label">New Keyword</div>
+                </div>
+                <!-- Keyword cards will be inserted here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Keyword Modal -->
+<div class="modal-overlay" id="keywordModalOverlay" onclick="if(event.target === this) closeKeywordModal()">
+    <div class="modal keyword-modal">
+        <div class="modal-header">
+            <button class="modal-close" onclick="closeKeywordModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="text" class="keyword-input-large" id="keywordInput" placeholder="What do you want to find?">
+
+            <div class="category-section">
+                <div class="category-section-header">
+                    <span>ONLY SEARCH</span>
+                    <span class="loading" id="categoriesLoading" style="display: none;">Loading categories...</span>
+                </div>
+                <div class="category-tags" id="categoryTags">
+                    <!-- Category tags populated after search -->
+                </div>
+            </div>
+
+            <div class="category-section">
+                <div class="category-section-header">HIDDEN</div>
+                <div class="category-tags" id="hiddenTags">
+                    <span class="empty-hidden">No categories hidden</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-delete" id="deleteKeywordBtn" onclick="deleteCurrentKeyword()" style="display: none;">Delete</button>
+            <button class="btn btn-success" onclick="saveKeyword()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Sizing Profile Modal -->
+<div class="modal-overlay" id="sizingModalOverlay" onclick="if(event.target === this) closeSizingModal()">
+    <div class="modal sizing-modal" style="max-width: 700px;">
+        <div class="modal-header">
+            <h3 class="modal-title">Sizing Profile</h3>
+        </div>
+        <div class="modal-body">
+            <div style="display: flex; gap: 32px;">
+                <div style="flex: 0 0 200px; display: flex; justify-content: center; align-items: center;">
+                    <svg viewBox="0 0 100 180" fill="none" stroke="currentColor" stroke-width="1" style="width: 180px; height: 320px;">
+                        <circle cx="50" cy="15" r="10" fill="none"/>
+                        <line x1="50" y1="25" x2="50" y2="32"/>
+                        <line x1="25" y1="35" x2="75" y2="35" stroke="var(--accent-primary)" stroke-width="2"/>
+                        <text x="82" y="38" font-size="8" fill="var(--accent-primary)">A</text>
+                        <line x1="25" y1="35" x2="15" y2="75"/>
+                        <line x1="75" y1="35" x2="85" y2="75"/>
+                        <line x1="28" y1="35" x2="32" y2="95"/>
+                        <line x1="72" y1="35" x2="68" y2="95"/>
+                        <line x1="30" y1="50" x2="70" y2="50" stroke="var(--accent-primary)" stroke-width="2"/>
+                        <text x="77" y="53" font-size="8" fill="var(--accent-primary)">B</text>
+                        <line x1="50" y1="35" x2="50" y2="95" stroke="var(--accent-primary)" stroke-width="2" stroke-dasharray="3,2"/>
+                        <text x="53" y="70" font-size="8" fill="var(--accent-primary)">C</text>
+                        <line x1="32" y1="75" x2="68" y2="75" stroke="var(--accent-primary)" stroke-width="2"/>
+                        <text x="75" y="78" font-size="8" fill="var(--accent-primary)">D</text>
+                        <line x1="32" y1="95" x2="68" y2="95"/>
+                        <line x1="30" y1="105" x2="70" y2="105" stroke="var(--accent-primary)" stroke-width="2"/>
+                        <text x="77" y="108" font-size="8" fill="var(--accent-primary)">E</text>
+                        <path d="M32 95 L50 115 L68 95" fill="none"/>
+                        <line x1="42" y1="95" x2="42" y2="115" stroke="var(--accent-primary)" stroke-width="2"/>
+                        <text x="35" y="108" font-size="8" fill="var(--accent-primary)">F</text>
+                        <line x1="35" y1="115" x2="32" y2="170"/>
+                        <line x1="65" y1="115" x2="68" y2="170"/>
+                        <line x1="58" y1="115" x2="58" y2="170" stroke="var(--accent-primary)" stroke-width="2"/>
+                        <text x="61" y="145" font-size="8" fill="var(--accent-primary)">G</text>
+                    </svg>
+                </div>
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 12px;">
+                    <div class="measurement-row" style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 140px; font-size: 13px; color: var(--text-secondary);"><span style="display: inline-block; width: 20px; height: 20px; background: var(--accent-primary); color: white; border-radius: 4px; text-align: center; line-height: 20px; font-size: 11px; font-weight: 600; margin-right: 8px;">A</span>Shoulder</span>
+                        <select class="op-select" id="size_a_op" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px;">
+                            <option value="">--</option><option value=">">&ge;</option><option value="<">&le;</option><option value="~">&asymp;</option>
+                        </select>
+                        <input type="number" class="val-input" id="size_a_val" placeholder="--" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px; font-family: 'IBM Plex Mono', monospace;">
+                        <span style="font-size: 12px; color: var(--text-muted);">cm</span>
+                    </div>
+                    <div class="measurement-row" style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 140px; font-size: 13px; color: var(--text-secondary);"><span style="display: inline-block; width: 20px; height: 20px; background: var(--accent-primary); color: white; border-radius: 4px; text-align: center; line-height: 20px; font-size: 11px; font-weight: 600; margin-right: 8px;">B</span>Chest</span>
+                        <select class="op-select" id="size_b_op" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px;">
+                            <option value="">--</option><option value=">">&ge;</option><option value="<">&le;</option><option value="~">&asymp;</option>
+                        </select>
+                        <input type="number" class="val-input" id="size_b_val" placeholder="--" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px; font-family: 'IBM Plex Mono', monospace;">
+                        <span style="font-size: 12px; color: var(--text-muted);">cm</span>
+                    </div>
+                    <div class="measurement-row" style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 140px; font-size: 13px; color: var(--text-secondary);"><span style="display: inline-block; width: 20px; height: 20px; background: var(--accent-primary); color: white; border-radius: 4px; text-align: center; line-height: 20px; font-size: 11px; font-weight: 600; margin-right: 8px;">C</span>Length</span>
+                        <select class="op-select" id="size_c_op" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px;">
+                            <option value="">--</option><option value=">">&ge;</option><option value="<">&le;</option><option value="~">&asymp;</option>
+                        </select>
+                        <input type="number" class="val-input" id="size_c_val" placeholder="--" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px; font-family: 'IBM Plex Mono', monospace;">
+                        <span style="font-size: 12px; color: var(--text-muted);">cm</span>
+                    </div>
+                    <div class="measurement-row" style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 140px; font-size: 13px; color: var(--text-secondary);"><span style="display: inline-block; width: 20px; height: 20px; background: var(--accent-primary); color: white; border-radius: 4px; text-align: center; line-height: 20px; font-size: 11px; font-weight: 600; margin-right: 8px;">D</span>Waist</span>
+                        <select class="op-select" id="size_d_op" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px;">
+                            <option value="">--</option><option value=">">&ge;</option><option value="<">&le;</option><option value="~">&asymp;</option>
+                        </select>
+                        <input type="number" class="val-input" id="size_d_val" placeholder="--" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px; font-family: 'IBM Plex Mono', monospace;">
+                        <span style="font-size: 12px; color: var(--text-muted);">cm</span>
+                    </div>
+                    <div class="measurement-row" style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 140px; font-size: 13px; color: var(--text-secondary);"><span style="display: inline-block; width: 20px; height: 20px; background: var(--accent-primary); color: white; border-radius: 4px; text-align: center; line-height: 20px; font-size: 11px; font-weight: 600; margin-right: 8px;">E</span>Hip</span>
+                        <select class="op-select" id="size_e_op" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px;">
+                            <option value="">--</option><option value=">">&ge;</option><option value="<">&le;</option><option value="~">&asymp;</option>
+                        </select>
+                        <input type="number" class="val-input" id="size_e_val" placeholder="--" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px; font-family: 'IBM Plex Mono', monospace;">
+                        <span style="font-size: 12px; color: var(--text-muted);">cm</span>
+                    </div>
+                    <div class="measurement-row" style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 140px; font-size: 13px; color: var(--text-secondary);"><span style="display: inline-block; width: 20px; height: 20px; background: var(--accent-primary); color: white; border-radius: 4px; text-align: center; line-height: 20px; font-size: 11px; font-weight: 600; margin-right: 8px;">F</span>Rise</span>
+                        <select class="op-select" id="size_f_op" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px;">
+                            <option value="">--</option><option value=">">&ge;</option><option value="<">&le;</option><option value="~">&asymp;</option>
+                        </select>
+                        <input type="number" class="val-input" id="size_f_val" placeholder="--" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px; font-family: 'IBM Plex Mono', monospace;">
+                        <span style="font-size: 12px; color: var(--text-muted);">cm</span>
+                    </div>
+                    <div class="measurement-row" style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 140px; font-size: 13px; color: var(--text-secondary);"><span style="display: inline-block; width: 20px; height: 20px; background: var(--accent-primary); color: white; border-radius: 4px; text-align: center; line-height: 20px; font-size: 11px; font-weight: 600; margin-right: 8px;">G</span>Inseam</span>
+                        <select class="op-select" id="size_g_op" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px;">
+                            <option value="">--</option><option value=">">&ge;</option><option value="<">&le;</option><option value="~">&asymp;</option>
+                        </select>
+                        <input type="number" class="val-input" id="size_g_val" placeholder="--" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px; font-family: 'IBM Plex Mono', monospace;">
+                        <span style="font-size: 12px; color: var(--text-muted);">cm</span>
+                    </div>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-light); font-size: 11px; color: var(--text-muted);">
+                        <span style="margin-right: 16px;"><strong>&ge;</strong> at least</span>
+                        <span style="margin-right: 16px;"><strong>&le;</strong> at most</span>
+                        <span><strong>&asymp;</strong> approximately</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeSizingModal()">Cancel</button>
+            <button class="btn btn-success" onclick="saveSizingProfile()">Save Profile</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const deckId = {{ deck_id }};
+    let deck = null;
+    let keywords = [];
+    let currentKeywordId = null;
+    let selectedCategories = [];
+    let hiddenCategories = [];
+    let availableCategories = [];
+
+    // Load deck info
+    async function loadDeck() {
+        const res = await fetch(`/api/decks/${deckId}`);
+        deck = await res.json();
+        document.getElementById('deckTitle').textContent = deck.name;
+
+        // Show delete button for non-default decks
+        if (deck.id !== 1) {
+            document.getElementById('deleteDeckBtn').style.display = 'inline-block';
+        }
+
+        // Highlight in sidebar
+        document.querySelectorAll('.nav-deck-item').forEach(el => {
+            el.classList.toggle('active', parseInt(el.dataset.deckId) === deckId);
+        });
+    }
+
+    // Load keywords
+    async function loadKeywords() {
+        const res = await fetch(`/api/decks/${deckId}/keywords`);
+        const data = await res.json();
+        keywords = data.keywords || [];
+        renderKeywords();
+    }
+
+    function renderKeywords() {
+        const grid = document.getElementById('keywordsGrid');
+        const newCard = grid.querySelector('.new-keyword-card');
+        grid.innerHTML = '';
+        grid.appendChild(newCard);
+
+        for (const kw of keywords) {
+            const card = document.createElement('div');
+            card.className = 'keyword-card';
+
+            // Build blocked categories display
+            const blockedCategories = kw.blocked_categories || [];
+            const blockedDisplay = blockedCategories.slice(0, 2).map(c =>
+                `<span class="keyword-hidden-tag">${c.category_name || c.category_id}</span>`
+            ).join('');
+            const moreCount = blockedCategories.length > 2 ? blockedCategories.length - 2 : 0;
+
+            card.innerHTML = `
+                <div class="keyword-card-header">
+                    <span class="keyword-text">${kw.keyword}</span>
+                    <span class="source-badge ${kw.source}">${kw.source}</span>
+                </div>
+                <div class="keyword-meta">
+                    <span class="keyword-stat">${kw.actual_item_count || 0} items</span>
+                </div>
+                <div class="keyword-categories">
+                    ${blockedDisplay}
+                    ${moreCount > 0 ? `<span class="keyword-hidden-tag">+${moreCount} more</span>` : ''}
+                </div>
+                <div class="keyword-card-footer">
+                    <button class="keyword-action scrape" onclick="scrapeKeyword(${kw.id})">Scrape</button>
+                    <button class="keyword-action edit" onclick="editKeyword(${kw.id})">Edit</button>
+                    <button class="keyword-action delete" onclick="deleteKeyword(${kw.id})">Delete</button>
+                </div>
+            `;
+            grid.appendChild(card);
+        }
+    }
+
+    // Keyword modal
+    function openKeywordModal(keywordId = null) {
+        currentKeywordId = keywordId;
+        selectedCategories = [];
+        hiddenCategories = [];
+        availableCategories = [];
+
+        const input = document.getElementById('keywordInput');
+        const deleteBtn = document.getElementById('deleteKeywordBtn');
+
+        if (keywordId) {
+            const kw = keywords.find(k => k.id === keywordId);
+            if (kw) {
+                input.value = kw.keyword;
+                selectedCategories = kw.whitelist_categories || [];
+                // blocked_categories now has: [{entry_id, category_id, category_name}, ...]
+                hiddenCategories = (kw.blocked_categories || []).map(c => ({
+                    id: c.category_id,
+                    name: c.category_name || c.category_id,
+                    entry_id: c.entry_id
+                }));
+                // Fetch categories for this keyword
+                fetchCategories(kw.keyword);
+            }
+            deleteBtn.style.display = 'inline-block';
+        } else {
+            input.value = '';
+            deleteBtn.style.display = 'none';
+        }
+
+        renderCategoryTags();
+        renderHiddenTags();
+
+        document.getElementById('keywordModalOverlay').classList.add('active');
+        input.focus();
+    }
+
+    function editKeyword(keywordId) {
+        openKeywordModal(keywordId);
+    }
+
+    function closeKeywordModal() {
+        document.getElementById('keywordModalOverlay').classList.remove('active');
+        document.getElementById('keywordInput').value = '';
+        currentKeywordId = null;
+    }
+
+    // Fetch categories based on keyword search
+    let categoryFetchTimeout = null;
+    document.getElementById('keywordInput').addEventListener('input', (e) => {
+        clearTimeout(categoryFetchTimeout);
+        const value = e.target.value.trim();
+
+        if (value.length >= 2) {
+            document.getElementById('categoriesLoading').style.display = 'inline';
+            categoryFetchTimeout = setTimeout(() => fetchCategories(value), 500);
+        } else {
+            document.getElementById('categoryTags').innerHTML = '<span style="font-size: 12px; color: var(--text-muted);">Type to search categories...</span>';
+            availableCategories = [];
+        }
+    });
+
+    async function fetchCategories(keyword) {
+        try {
+            const res = await fetch(`/api/categories/search?keyword=${encodeURIComponent(keyword)}`);
+            const data = await res.json();
+            availableCategories = data.categories || [];
+            renderCategoryTags();
+        } catch (e) {
+            console.error('Failed to fetch categories:', e);
+        } finally {
+            document.getElementById('categoriesLoading').style.display = 'none';
+        }
+    }
+
+    function renderCategoryTags() {
+        const container = document.getElementById('categoryTags');
+
+        if (availableCategories.length === 0) {
+            container.innerHTML = '<span style="font-size: 12px; color: var(--text-muted);">Type to search categories...</span>';
+            return;
+        }
+
+        // New hierarchical format: [{name, id, source, count, children: [{name, id, count}]}]
+        let html = '';
+        for (const topCat of availableCategories) {
+            // Top-level category header
+            html += `<div style="width: 100%; margin-top: 12px; margin-bottom: 6px;">
+                <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">
+                    ${topCat.name} (${topCat.count})
+                </span>
+            </div>`;
+
+            // Children as selectable tags
+            if (topCat.children && topCat.children.length > 0) {
+                for (const child of topCat.children) {
+                    const childId = child.id || `${topCat.source}:${child.name}`;
+                    const isSelected = selectedCategories.includes(childId);
+                    html += `
+                        <div class="category-tag ${isSelected ? 'selected' : ''}" onclick="toggleCategory('${childId}')">
+                            <span class="checkmark">&#10003;</span>
+                            ${child.name} <span style="opacity: 0.6">(${child.count})</span>
+                        </div>
+                    `;
+                }
+            } else {
+                // If no children, make the top-level itself selectable
+                const topId = topCat.id || `${topCat.source}:${topCat.name}`;
+                const isSelected = selectedCategories.includes(topId);
+                html += `
+                    <div class="category-tag ${isSelected ? 'selected' : ''}" onclick="toggleCategory('${topId}')">
+                        <span class="checkmark">&#10003;</span>
+                        ${topCat.name} <span style="opacity: 0.6">(${topCat.count})</span>
+                    </div>
+                `;
+            }
+        }
+
+        container.innerHTML = html || '<span style="font-size: 12px; color: var(--text-muted);">No categories found</span>';
+    }
+
+    function toggleCategory(categoryId) {
+        const idx = selectedCategories.indexOf(categoryId);
+        if (idx === -1) {
+            selectedCategories.push(categoryId);
+        } else {
+            selectedCategories.splice(idx, 1);
+        }
+        renderCategoryTags();
+    }
+
+    function renderHiddenTags() {
+        const container = document.getElementById('hiddenTags');
+
+        if (hiddenCategories.length === 0) {
+            container.innerHTML = '<span class="empty-hidden">No categories hidden</span>';
+            return;
+        }
+
+        // hiddenCategories format: [{id, name, entry_id}, ...]
+        container.innerHTML = hiddenCategories.map(cat => `
+            <div class="hidden-category-tag">
+                ${cat.name || cat.id}
+                <button class="hidden-category-remove" onclick="removeHiddenCategory('${cat.id}')" title="Unhide this category">&times;</button>
+            </div>
+        `).join('');
+    }
+
+    async function removeHiddenCategory(categoryId) {
+        if (!currentKeywordId) return;
+
+        // Call API to remove from blocklist
+        try {
+            await fetch(`/api/keywords/${currentKeywordId}/blocklist`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ category_id: categoryId })
+            });
+
+            // Update local state
+            hiddenCategories = hiddenCategories.filter(c => c.id !== categoryId);
+            renderHiddenTags();
+
+            // Reload keywords to update the card display
+            await loadKeywords();
+        } catch (e) {
+            console.error('Failed to remove hidden category:', e);
+        }
+    }
+
+    async function saveKeyword() {
+        const keyword = document.getElementById('keywordInput').value.trim();
+        if (!keyword) return;
+
+        if (currentKeywordId) {
+            // Update existing
+            await fetch(`/api/keywords/${currentKeywordId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    keyword,
+                    whitelist: selectedCategories,
+                    blocklist_remove: hiddenCategories.map(c => c.id || c)
+                })
+            });
+        } else {
+            // Create new
+            await fetch('/api/keywords', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    keyword,
+                    source: 'both',
+                    deck_id: deckId,
+                    whitelist: selectedCategories
+                })
+            });
+        }
+
+        closeKeywordModal();
+        loadKeywords();
+    }
+
+    async function deleteCurrentKeyword() {
+        if (!currentKeywordId) return;
+        if (!confirm('Delete this keyword?')) return;
+        await fetch(`/api/keywords/${currentKeywordId}`, { method: 'DELETE' });
+        closeKeywordModal();
+        loadKeywords();
+    }
+
+    async function deleteKeyword(keywordId) {
+        if (!confirm('Delete this keyword?')) return;
+        await fetch(`/api/keywords/${keywordId}`, { method: 'DELETE' });
+        loadKeywords();
+    }
+
+    // Scraping
+    async function scrapeKeyword(keywordId) {
+        document.getElementById('scrapeStatus').textContent = 'Scraping...';
+        document.getElementById('scrapeStatus').className = 'scrape-status running';
+        await fetch(`/api/scrape/${keywordId}`, { method: 'POST' });
+        pollStatus();
+    }
+
+    async function scrapeAll() {
+        document.getElementById('scrapeStatus').textContent = 'Scraping all...';
+        document.getElementById('scrapeStatus').className = 'scrape-status running';
+        await fetch('/api/scrape', { method: 'POST' });
+        pollStatus();
+    }
+
+    async function pollStatus() {
+        const res = await fetch('/api/scrape/status');
+        const status = await res.json();
+
+        document.getElementById('scrapeStatus').textContent = status.message || 'Ready';
+
+        if (status.running) {
+            document.getElementById('scrapeStatus').className = 'scrape-status running';
+            setTimeout(pollStatus, 2000);
+        } else {
+            document.getElementById('scrapeStatus').className = 'scrape-status';
+            loadKeywords();
+        }
+    }
+
+    // Deck operations
+    async function deleteDeck() {
+        if (!confirm('Delete this deck? Keywords will be moved to Default deck.')) return;
+        await fetch(`/api/decks/${deckId}`, { method: 'DELETE' });
+        window.location.href = '/keywords/1';
+    }
+
+    // Sizing modal
+    function openSizingModal() {
+        fetch(`/api/decks/${deckId}`)
+            .then(res => res.json())
+            .then(deck => {
+                for (const key of ['a', 'b', 'c', 'd', 'e', 'f', 'g']) {
+                    const opSelect = document.getElementById(`size_${key}_op`);
+                    const valInput = document.getElementById(`size_${key}_val`);
+                    opSelect.value = deck[`size_${key}_op`] || '';
+                    valInput.value = deck[`size_${key}_val`] || '';
+                }
+            });
+
+        document.getElementById('sizingModalOverlay').classList.add('active');
+    }
+
+    function closeSizingModal() {
+        document.getElementById('sizingModalOverlay').classList.remove('active');
+    }
+
+    async function saveSizingProfile() {
+        const sizing = {};
+        for (const key of ['a', 'b', 'c', 'd', 'e', 'f', 'g']) {
+            const op = document.getElementById(`size_${key}_op`).value || null;
+            const val = document.getElementById(`size_${key}_val`).value;
+            sizing[key] = { op, val: val ? parseInt(val) : null };
+        }
+
+        await fetch(`/api/decks/${deckId}/sizing`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(sizing)
+        });
+
+        closeSizingModal();
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        const keywordModalActive = document.getElementById('keywordModalOverlay').classList.contains('active');
+        const sizingModalActive = document.getElementById('sizingModalOverlay').classList.contains('active');
+
+        if (keywordModalActive) {
+            if (e.key === 'Escape') closeKeywordModal();
+        } else if (sizingModalActive) {
+            if (e.key === 'Escape') closeSizingModal();
+        } else {
+            if (e.key === 'n' || e.key === 'N') {
+                e.preventDefault();
+                openKeywordModal();
+            }
+        }
+    });
+
+    // Initialize
+    loadDeck();
+    loadKeywords();
+</script>
+{% endblock %}

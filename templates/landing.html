@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAPIERE - Japanese Fashion Shopping Helper</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .landing-page {
+            min-height: 100vh;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .landing-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 3rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .landing-logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+        }
+
+        .landing-nav {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .landing-main {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 6rem 2rem;
+            text-align: center;
+        }
+
+        .landing-main h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
+
+        .landing-main p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+        }
+
+        .landing-cta {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .landing-cta .btn {
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal h3 {
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .modal input, .modal textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .modal textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .modal input:focus, .modal textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .modal label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .modal .btn {
+            width: 100%;
+            padding: 0.875rem;
+            font-size: 1rem;
+        }
+
+        .modal-message {
+            padding: 1rem;
+            border-radius: 6px;
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        .modal-message.success {
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+        }
+
+        .modal-message.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
+        .modal-footer-text {
+            margin-top: 1.5rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .modal-footer-text a {
+            color: var(--accent-color);
+            cursor: pointer;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+
+        /* Features section */
+        .features-section {
+            padding: 4rem 2rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .features-grid {
+            max-width: 900px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .feature-card {
+            text-align: center;
+            padding: 1.5rem;
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 1rem;
+            color: var(--accent-color);
+        }
+
+        .feature-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            .landing-main h1 {
+                font-size: 2rem;
+            }
+            .landing-cta {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body class="landing-page">
+    <header class="landing-header">
+        <div class="landing-logo">TAPIERE</div>
+        <nav class="landing-nav">
+            <button class="btn" onclick="openLoginModal()">Sign In</button>
+        </nav>
+    </header>
+
+    <main class="landing-main">
+        <h1>Smart shopping for Japanese fashion</h1>
+        <p>Scrape Mercari & Yahoo Auctions Japan. Save, rate, and organize your finds. Never miss a grail again.</p>
+
+        <div class="landing-cta">
+            <button class="btn btn-primary" onclick="openInviteModal()">Request Invite</button>
+            <a href="/demo" class="btn">Try Demo</a>
+        </div>
+    </main>
+
+    <section class="features-section">
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M12 3v18M3 12h18M5.636 5.636l12.728 12.728M18.364 5.636L5.636 18.364"/>
+                        <circle cx="12" cy="12" r="2"/>
+                    </svg>
+                </div>
+                <h3>Reroll Discovery</h3>
+                <p>Browse 5 items at a time. Press 1-5 to save, space to load more.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <rect x="2" y="4" width="20" height="16" rx="2"/>
+                        <path d="M2 8h20"/>
+                    </svg>
+                </div>
+                <h3>Deck Organization</h3>
+                <p>Organize searches into decks. Set sizing profiles for fit scoring.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                    </svg>
+                </div>
+                <h3>Save & Rate</h3>
+                <p>Star ratings, cart status, and category blocklists.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="loginModal" onclick="if(event.target === this) closeLoginModal()">
+        <div class="modal">
+            <h3>Sign In</h3>
+            <label for="loginEmail">Email</label>
+            <input type="email" id="loginEmail" placeholder="your@email.com">
+            <button class="btn btn-primary" onclick="requestLogin()">Send Magic Link</button>
+            <div id="loginMessage"></div>
+            <p class="modal-footer-text">
+                Don't have an account? <a onclick="closeLoginModal(); openInviteModal();">Request invite</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Invite Request Modal -->
+    <div class="modal-overlay" id="inviteModal" onclick="if(event.target === this) closeInviteModal()">
+        <div class="modal">
+            <h3>Request Invite</h3>
+            <label for="inviteEmail">Email</label>
+            <input type="email" id="inviteEmail" placeholder="your@email.com">
+            <label for="inviteReason">Why do you want to use TAPIERE? (optional)</label>
+            <textarea id="inviteReason" placeholder="I'm looking for..."></textarea>
+            <button class="btn btn-primary" onclick="requestInvite()">Join Waitlist</button>
+            <div id="inviteMessage"></div>
+            <p class="modal-footer-text">
+                Already have an account? <a onclick="closeInviteModal(); openLoginModal();">Sign in</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Modal controls
+        function openLoginModal() {
+            document.getElementById('loginModal').classList.add('active');
+            document.getElementById('loginEmail').focus();
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').classList.remove('active');
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginMessage').innerHTML = '';
+        }
+
+        function openInviteModal() {
+            document.getElementById('inviteModal').classList.add('active');
+            document.getElementById('inviteEmail').focus();
+        }
+
+        function closeInviteModal() {
+            document.getElementById('inviteModal').classList.remove('active');
+            document.getElementById('inviteEmail').value = '';
+            document.getElementById('inviteReason').value = '';
+            document.getElementById('inviteMessage').innerHTML = '';
+        }
+
+        // API calls
+        async function requestLogin() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const messageEl = document.getElementById('loginMessage');
+
+            if (!email) {
+                messageEl.innerHTML = '<div class="modal-message error">Please enter your email</div>';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    messageEl.innerHTML = `<div class="modal-message success">${data.message}</div>`;
+                } else {
+                    messageEl.innerHTML = `<div class="modal-message error">${data.detail}</div>`;
+                }
+            } catch (e) {
+                messageEl.innerHTML = '<div class="modal-message error">Something went wrong. Please try again.</div>';
+            }
+        }
+
+        async function requestInvite() {
+            const email = document.getElementById('inviteEmail').value.trim();
+            const reason = document.getElementById('inviteReason').value.trim();
+            const messageEl = document.getElementById('inviteMessage');
+
+            if (!email) {
+                messageEl.innerHTML = '<div class="modal-message error">Please enter your email</div>';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/invite/request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, reason: reason || null })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    messageEl.innerHTML = `<div class="modal-message success">${data.message}</div>`;
+                } else {
+                    messageEl.innerHTML = `<div class="modal-message error">${data.detail}</div>`;
+                }
+            } catch (e) {
+                messageEl.innerHTML = '<div class="modal-message error">Something went wrong. Please try again.</div>';
+            }
+        }
+
+        // Handle Enter key
+        document.getElementById('loginEmail').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') requestLogin();
+            else if (e.key === 'Escape') closeLoginModal();
+        });
+
+        document.getElementById('inviteEmail').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') requestInvite();
+            else if (e.key === 'Escape') closeInviteModal();
+        });
+
+        // Check for error in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('error') === 'invalid_link') {
+            openLoginModal();
+            document.getElementById('loginMessage').innerHTML =
+                '<div class="modal-message error">That link has expired or already been used. Request a new one.</div>';
+        }
+    </script>
+</body>
+</html>

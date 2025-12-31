@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ deck_name }} by @{{ owner_username }} - TAPIERE</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .public-page {
+            min-height: 100vh;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .public-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .public-logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .public-main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .deck-header {
+            margin-bottom: 2rem;
+        }
+
+        .deck-header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .deck-header .owner {
+            color: var(--text-secondary);
+        }
+
+        .deck-header .owner a {
+            color: var(--accent-color);
+        }
+
+        .item-count {
+            color: var(--text-tertiary);
+            margin-top: 0.5rem;
+        }
+
+        .public-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .public-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .public-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+
+        .public-card a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .card-image {
+            aspect-ratio: 1;
+            overflow: hidden;
+            background: var(--bg-tertiary);
+        }
+
+        .card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .card-info {
+            padding: 1rem;
+        }
+
+        .card-title {
+            font-size: 0.9rem;
+            line-height: 1.3;
+            margin-bottom: 0.5rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-price {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .card-stars {
+            color: #fbbf24;
+            letter-spacing: -2px;
+        }
+
+        .card-source {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            margin-top: 0.25rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .public-footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--text-tertiary);
+            font-size: 0.9rem;
+        }
+
+        .public-footer a {
+            color: var(--accent-color);
+        }
+    </style>
+</head>
+<body class="public-page">
+    <header class="public-header">
+        <a href="/" class="public-logo">TAPIERE</a>
+        <a href="/" class="btn">Try TAPIERE</a>
+    </header>
+
+    <main class="public-main">
+        <div class="deck-header">
+            <h1>{{ deck_name }}</h1>
+            <p class="owner">by <strong>@{{ owner_username }}</strong></p>
+            <p class="item-count">{{ items|length }} item{{ 's' if items|length != 1 else '' }}</p>
+        </div>
+
+        {% if items %}
+        <div class="public-grid">
+            {% for item in items %}
+            <div class="public-card">
+                <a href="{{ item.url }}" target="_blank" rel="noopener">
+                    <div class="card-image">
+                        <img src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy">
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title">{{ item.title }}</div>
+                        <div class="card-meta">
+                            <span class="card-price">{{ (item.price or 0)|int|string }}{{ ' ' if item.price else '' }}</span>
+                            {% if item.stars %}
+                            <span class="card-stars">{{ '' * item.stars }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="card-source">{{ item.source }}</div>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No items in this deck yet</p>
+        </div>
+        {% endif %}
+    </main>
+
+    <footer class="public-footer">
+        <p>Made with <a href="/">TAPIERE</a> - Japanese fashion shopping helper</p>
+    </footer>
+</body>
+</html>

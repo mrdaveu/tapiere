@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Invite Requests - TAPIERE{% endblock %}
+
+{% block content %}
+<div class="main-content" style="padding: 2rem;">
+    <div class="page-header" style="margin-bottom: 2rem;">
+        <h1>Invite Requests</h1>
+        <p style="color: var(--text-secondary);">
+            {{ pending_requests|length }} pending request{{ 's' if pending_requests|length != 1 else '' }}
+        </p>
+    </div>
+
+    {% if pending_requests %}
+    <div class="invite-list" id="inviteList">
+        {% for req in pending_requests %}
+        <div class="invite-card" id="invite-{{ req.id }}">
+            <div class="invite-info">
+                <div class="invite-email">{{ req.email }}</div>
+                <div class="invite-reason">{{ req.reason or 'No reason provided' }}</div>
+                <div class="invite-date">{{ req.created_at }}</div>
+            </div>
+            <div class="invite-actions">
+                <button class="btn btn-success" onclick="approveInvite({{ req.id }}, '{{ req.email }}')">
+                    Approve
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state" style="text-align: center; padding: 4rem; color: var(--text-secondary);">
+        <p>No pending invite requests</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .invite-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        max-width: 600px;
+    }
+
+    .invite-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .invite-info {
+        flex: 1;
+    }
+
+    .invite-email {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .invite-reason {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        white-space: pre-wrap;
+    }
+
+    .invite-date {
+        color: var(--text-tertiary);
+        font-size: 0.8rem;
+    }
+
+    .invite-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .invite-card.approved {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    .invite-card.approved::after {
+        content: 'Approved!';
+        color: var(--success-color);
+        font-weight: 600;
+    }
+</style>
+
+<script>
+    async function approveInvite(requestId, email) {
+        const card = document.getElementById(`invite-${requestId}`);
+        const btn = card.querySelector('button');
+
+        btn.disabled = true;
+        btn.textContent = 'Approving...';
+
+        try {
+            const res = await fetch(`/api/invite/approve/${requestId}`, {
+                method: 'POST'
+            });
+
+            if (res.ok) {
+                card.classList.add('approved');
+                card.querySelector('.invite-actions').innerHTML =
+                    '<span style="color: var(--success-color); font-weight: 600;">Approved & email sent!</span>';
+            } else {
+                const data = await res.json();
+                alert(`Error: ${data.detail}`);
+                btn.disabled = false;
+                btn.textContent = 'Approve';
+            }
+        } catch (e) {
+            alert('Something went wrong');
+            btn.disabled = false;
+            btn.textContent = 'Approve';
+        }
+    }
+</script>
+{% endblock %}
