@@ -6,11 +6,13 @@ Multi-user support with magic link authentication.
 
 import sqlite3
 import secrets
+import os
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional, List
 
-DB_PATH = Path(__file__).parent / "shoppinghelper.db"
+# Use DATABASE_PATH env var for Railway persistent volume, fallback to local
+DB_PATH = Path(os.environ.get('DATABASE_PATH', Path(__file__).parent / "shoppinghelper.db"))
 
 # Magic link validity (24 hours)
 MAGIC_LINK_VALIDITY_HOURS = 24
