@@ -3,7 +3,7 @@ TAPIERE - Shopping Helper for Japanese Marketplaces
 FastAPI backend with embedded frontend and multi-user auth.
 """
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Cookie, Depends
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Cookie, Depends, UploadFile, File, Header
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -98,6 +98,7 @@ templates = Jinja2Templates(directory="templates")
 
 # Environment
 IS_PRODUCTION = os.environ.get('PRODUCTION', 'false').lower() == 'true'
+UPLOAD_SECRET = os.environ.get('UPLOAD_SECRET', 'temp-secret-change-me')
 
 
 # =====================================================
@@ -1619,6 +1620,38 @@ async def start_demo(request: Request):
         max_age=60*60  # 1 hour
     )
     return response
+
+
+# =====================================================
+# TEMPORARY: Database upload endpoint (remove after use)
+# =====================================================
+
+@app.post("/admin/upload-db")
+async def upload_database(
+    file: UploadFile = File(...),
+    x_upload_secret: str = Header(...)
+):
+    """
+    Upload database file. Protected by secret header.
+    Usage: curl -X POST -H "X-Upload-Secret: YOUR_SECRET" -F "file=@shoppinghelper.db" https://tapiere.com/admin/upload-db
+    """
+    if x_upload_secret != UPLOAD_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid secret")
+
+    from database import DB_PATH
+
+    # Backup existing if present
+    if DB_PATH.exists():
+        import shutil
+        shutil.copy(DB_PATH, DB_PATH.with_suffix('.db.bak'))
+
+    # Write uploaded file
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    content = await file.read()
+    with open(DB_PATH, 'wb') as f:
+        f.write(content)
+
+    return {"status": "ok", "size": len(content), "path": str(DB_PATH)}
 
 
 if __name__ == "__main__":
