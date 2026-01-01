@@ -363,14 +363,14 @@
                     </div>
                 </div>
             </div>
-
-            <div class="controls-bar">
-                <span><kbd>1-5</kbd> Save item</span>
-                <span><kbd>Space</kbd> Load more</span>
-                <span><kbd>Backspace</kbd> Go back</span>
-                <span><kbd>U</kbd> Skip keyword</span>
-            </div>
         </div>
+    </div>
+
+    <div class="controls-bar">
+        <span><kbd>1-5</kbd> Save item</span>
+        <span><kbd>Space</kbd> Load more</span>
+        <span><kbd>Backspace</kbd> Go back</span>
+        <span><kbd>U</kbd> Skip keyword</span>
     </div>
 </div>
 
@@ -407,10 +407,48 @@
     let allKeywords = [];
     let lastRefreshTime = localStorage.getItem('lastRefreshTime') || null;
 
-    async function loadItems() {
+    // Preload queue: holds next 2 batches for instant loading
+    let preloadedBatches = [];
+    let isPreloading = false;
+
+    async function fetchBatch() {
         const res = await fetch('/api/items/next?count=5');
         const data = await res.json();
-        const items = data.items;
+        return data.items;
+    }
+
+    async function ensurePreloaded() {
+        // Keep 2 batches preloaded
+        if (isPreloading || preloadedBatches.length >= 2) return;
+        isPreloading = true;
+
+        while (preloadedBatches.length < 2) {
+            const batch = await fetchBatch();
+            if (batch.length === 0) break;
+            preloadedBatches.push(batch);
+            // Preload images
+            batch.forEach(item => {
+                if (item.image_url) {
+                    const img = new Image();
+                    img.src = item.image_url;
+                }
+            });
+        }
+        isPreloading = false;
+    }
+
+    async function loadItems() {
+        let items;
+
+        // Use preloaded batch if available
+        if (preloadedBatches.length > 0) {
+            items = preloadedBatches.shift();
+        } else {
+            items = await fetchBatch();
+        }
+
+        // Start preloading more
+        ensurePreloaded();
 
         if (items.length === 0) {
             document.getElementById('cardsContainer').style.display = 'none';
@@ -430,7 +468,6 @@
         currentItems = items;
         renderCards();
         loadNavStats();
-        preloadNextBatch();
         updateTopbarKeyword();
         loadKeywordsDropdown();
     }
@@ -562,19 +599,6 @@
         await loadItems();
     }
 
-    async function preloadNextBatch() {
-        const res = await fetch('/api/items/next?count=10');
-        const data = await res.json();
-        const container = document.getElementById('preloadContainer');
-        container.innerHTML = '';
-        data.items.forEach(item => {
-            if (item.image_url) {
-                const img = document.createElement('img');
-                img.src = item.image_url;
-                container.appendChild(img);
-            }
-        });
-    }
 
     function renderCards() {
         const container = document.getElementById('cardsContainer');

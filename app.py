@@ -200,6 +200,10 @@ def queue_detail_scrape(item: dict):
     """Add an item to the detail scrape queue and start worker if needed."""
     global detail_scrape_queue
 
+    # Skip if detail scraper not available (playwright not installed)
+    if not DETAIL_SCRAPER_AVAILABLE:
+        return
+
     # Only queue if item doesn't have details yet
     if not item.get("description") and not item.get("images"):
         # Avoid duplicates
@@ -660,8 +664,15 @@ async def refresh_item_status_endpoint(item_id: int):
             if match:
                 mercari_item_id = match.group(1)
                 # Use mercari library - fast API call, no browser needed
-                from mercari import getItemInfo
-                mercari_item = getItemInfo(mercari_item_id)
+                try:
+                    from mercari import getItemInfo
+                    mercari_item = getItemInfo(mercari_item_id)
+                except ImportError:
+                    print(f"[Status] mercari module not available, skipping status refresh for {item_id}")
+                    return {"status": "skipped", "reason": "mercari module not installed"}
+                except Exception as e:
+                    print(f"[Status] Error fetching mercari item {mercari_item_id}: {e}")
+                    return {"status": "error", "reason": str(e)}
                 status = mercari_item.status
 
                 # Mercari returns lowercase status like "on_sale", "trading", "sold_out"
