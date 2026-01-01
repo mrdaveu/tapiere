@@ -419,9 +419,7 @@
 
         while (preloadedBatches.length < 2) {
             const excludeIds = getExcludeIds();
-            console.log('Preloading with exclude:', excludeIds);
             const batch = await fetchBatch(excludeIds);
-            console.log('Preloaded batch:', batch.map(i => i.id));
             if (batch.length === 0) break;
             preloadedBatches.push(batch);
             // Preload images
@@ -441,12 +439,9 @@
         // Use preloaded batch if available
         if (preloadedBatches.length > 0) {
             items = preloadedBatches.shift();
-            console.log('Using preloaded batch, remaining:', preloadedBatches.length);
         } else {
             items = await fetchBatch();
-            console.log('Fetched fresh batch');
         }
-        console.log('Items to display:', items.map(i => i.id));
 
         if (items.length === 0) {
             document.getElementById('cardsContainer').style.display = 'none';
@@ -642,22 +637,25 @@
         });
     }
 
-    async function toggleSave(index) {
+    function toggleSave(index) {
         const item = currentItems[index];
         if (!item) return;
 
         const card = document.querySelector(`.item-card[data-index="${index}"]`);
         const isSaved = savedIds.has(item.id);
 
+        // Update UI instantly
         if (isSaved) {
-            await fetch(`/api/items/${item.id}/unsave`, { method: 'POST' });
             savedIds.delete(item.id);
             card.classList.remove('saved');
+            // Fire API in background (no await)
+            fetch(`/api/items/${item.id}/unsave`, { method: 'POST' });
         } else {
-            await fetch(`/api/items/${item.id}/save`, { method: 'POST' });
             savedIds.add(item.id);
             card.classList.add('saved', 'just-saved');
             setTimeout(() => card.classList.remove('just-saved'), 300);
+            // Fire API in background (no await)
+            fetch(`/api/items/${item.id}/save`, { method: 'POST' });
         }
 
         localStorage.setItem('savedIds', JSON.stringify([...savedIds]));
@@ -677,9 +675,10 @@
         if (currentItems.length === 0 || isRerolling) return;
         isRerolling = true;
 
+        // Fire seen API in background (no await)
         const itemIds = currentItems.filter(item => !savedIds.has(item.id)).map(item => item.id);
         if (itemIds.length > 0) {
-            await fetch('/api/items/seen', {
+            fetch('/api/items/seen', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ item_ids: itemIds })
