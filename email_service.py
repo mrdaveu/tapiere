@@ -1,34 +1,54 @@
 """
-Email service using Resend API.
+Email service using Resend API via httpx.
 100 free emails/day on free tier.
 """
 import os
-
-# Try to import resend, but make it optional for development
-try:
-    import resend
-    RESEND_AVAILABLE = True
-except ImportError:
-    RESEND_AVAILABLE = False
-    print("[Email] resend package not installed - emails will be logged to console")
+import httpx
 
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
-FROM_EMAIL = os.environ.get('FROM_EMAIL', 'TAPIERE <onboarding@resend.dev>')  # Use resend.dev for testing
+FROM_EMAIL = os.environ.get('FROM_EMAIL', 'TAPIERE <onboarding@resend.dev>')
 BASE_URL = os.environ.get('BASE_URL', 'http://localhost:8000').rstrip('/')
+
+
+def _send_email(to: str, subject: str, html: str):
+    """Send email via Resend API using httpx."""
+    if not RESEND_API_KEY:
+        print(f"[Email] No API key - would send to {to}: {subject}")
+        return False
+
+    try:
+        response = httpx.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {RESEND_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "from": FROM_EMAIL,
+                "to": [to],
+                "subject": subject,
+                "html": html,
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        print(f"[Email] Sent to {to}: {subject}")
+        return True
+    except Exception as e:
+        print(f"[Email] Error sending to {to}: {e}")
+        return False
 
 
 def send_magic_link(email: str, token: str, link_type: str = 'login'):
     """Send magic link email."""
     link = f"{BASE_URL}/auth/verify?token={token}"
 
-    if not RESEND_API_KEY or not RESEND_AVAILABLE:
+    if not RESEND_API_KEY:
         print(f"\n{'='*50}")
         print(f"[Email] Magic link ({link_type}) for {email}:")
         print(f"  {link}")
         print(f"{'='*50}\n")
         return
-
-    resend.api_key = RESEND_API_KEY
 
     if link_type == 'invite':
         subject = "You're in! Welcome to TAPIERE"
@@ -79,34 +99,21 @@ def send_magic_link(email: str, token: str, link_type: str = 'login'):
 </html>
         """
 
-    try:
-        resend.Emails.send({
-            "from": FROM_EMAIL,
-            "to": email,
-            "subject": subject,
-            "html": html
-        })
-        print(f"[Email] Sent {link_type} email to {email}")
-    except Exception as e:
-        print(f"[Email] Error sending to {email}: {e}")
+    if not _send_email(email, subject, html):
         # Fallback to console
         print(f"[Email] Magic link: {link}")
 
 
 def send_invite_confirmation(email: str):
     """Send confirmation that invite request was received."""
-    if not RESEND_API_KEY or not RESEND_AVAILABLE:
+    if not RESEND_API_KEY:
         print(f"[Email] Invite confirmation for {email}: You're on the waitlist!")
         return
 
-    resend.api_key = RESEND_API_KEY
-
-    try:
-        resend.Emails.send({
-            "from": FROM_EMAIL,
-            "to": email,
-            "subject": "TAPIERE - You're on the waitlist!",
-            "html": """
+    _send_email(
+        email,
+        "TAPIERE - You're on the waitlist!",
+        """
 <!DOCTYPE html>
 <html>
 <head>
@@ -125,8 +132,5 @@ def send_invite_confirmation(email: str):
     </div>
 </body>
 </html>
-            """
-        })
-        print(f"[Email] Sent invite confirmation to {email}")
-    except Exception as e:
-        print(f"[Email] Error sending to {email}: {e}")
+        """
+    )
