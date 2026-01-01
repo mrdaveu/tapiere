@@ -23,6 +23,9 @@ numpy>=1.24.0
 # LLM API
 openai>=1.0.0
 
+# Mercari API
+mercari
+
 # Email
 resend>=2.0.0
 

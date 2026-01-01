@@ -133,11 +133,13 @@ detail_scrape_running = False
 
 
 def run_detail_scrape_worker():
-    """Background worker that scrapes item details from the queue."""
+    """Background worker that scrapes item details from the queue.
+    Uses httpx for Yahoo and requests/mercari API for Mercari - no browser needed.
+    """
     global detail_scrape_running, detail_scrape_queue
 
     if not DETAIL_SCRAPER_AVAILABLE:
-        print("[DetailScraper] Not available (playwright not installed)")
+        print("[DetailScraper] Not available (detail_scraper module not loaded)")
         return
 
     if detail_scrape_running:
@@ -146,49 +148,18 @@ def run_detail_scrape_worker():
     detail_scrape_running = True
 
     try:
-        from playwright.sync_api import sync_playwright
+        while detail_scrape_queue:
+            item = detail_scrape_queue.pop(0)
+            try:
+                details = scrape_item_detail(item)
+                if details.get("description") or details.get("images"):
+                    update_item_details(item["id"], details)
+                    print(f"[DetailScraper] Updated item {item['id']}: {len(details.get('images', []))} images")
+            except Exception as e:
+                print(f"[DetailScraper] Error on item {item['id']}: {e}")
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=True,
-                args=['--disable-blink-features=AutomationControlled', '--no-sandbox']
-            )
-            context = browser.new_context(
-                viewport={"width": 1280, "height": 800},
-                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                locale="ja-JP",
-            )
-            page = context.new_page()
-
-            while detail_scrape_queue:
-                item = detail_scrape_queue.pop(0)
-                try:
-                    details = scrape_item_detail(item, page)
-                    if details.get("description") or details.get("images"):
-                        update_item_details(item["id"], details)
-                        print(f"[DetailScraper] Updated item {item['id']}: {len(details.get('images', []))} images")
-
-                        # Score fit if item has a keyword with a deck
-                        if item.get("keyword_id"):
-                            try:
-                                deck = get_deck_for_keyword(item["keyword_id"])
-                                if deck:
-                                    description = details.get("description") or ""
-                                    score = score_item_fit_sync(description, deck)
-                                    if score:
-                                        update_item_fit_score(item["id"], score)
-                                        print(f"[FitScorer] Item {item['id']} scored: {score}/4")
-                            except Exception as fit_err:
-                                print(f"[FitScorer] Error scoring item {item['id']}: {fit_err}")
-
-                except Exception as e:
-                    print(f"[DetailScraper] Error on item {item['id']}: {e}")
-
-                import time
-                time.sleep(0.5)  # Rate limit
-
-            context.close()
-            browser.close()
+            import time
+            time.sleep(0.5)  # Rate limit
 
     except Exception as e:
         print(f"[DetailScraper] Worker error: {e}")
@@ -199,10 +170,6 @@ def run_detail_scrape_worker():
 def queue_detail_scrape(item: dict):
     """Add an item to the detail scrape queue and start worker if needed."""
     global detail_scrape_queue
-
-    # Skip if detail scraper not available (playwright not installed)
-    if not DETAIL_SCRAPER_AVAILABLE:
-        return
 
     # Only queue if item doesn't have details yet
     if not item.get("description") and not item.get("images"):
@@ -664,15 +631,8 @@ async def refresh_item_status_endpoint(item_id: int):
             if match:
                 mercari_item_id = match.group(1)
                 # Use mercari library - fast API call, no browser needed
-                try:
-                    from mercari import getItemInfo
-                    mercari_item = getItemInfo(mercari_item_id)
-                except ImportError:
-                    print(f"[Status] mercari module not available, skipping status refresh for {item_id}")
-                    return {"status": "skipped", "reason": "mercari module not installed"}
-                except Exception as e:
-                    print(f"[Status] Error fetching mercari item {mercari_item_id}: {e}")
-                    return {"status": "error", "reason": str(e)}
+                from mercari import getItemInfo
+                mercari_item = getItemInfo(mercari_item_id)
                 status = mercari_item.status
 
                 # Mercari returns lowercase status like "on_sale", "trading", "sold_out"
