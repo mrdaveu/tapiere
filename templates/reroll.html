@@ -131,28 +131,6 @@
         margin-bottom: 6px;
     }
 
-    .controls-bar {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        display: flex;
-        justify-content: center;
-        gap: 24px;
-        padding: 16px 24px;
-        font-size: 12px;
-        color: var(--text-muted);
-        background: var(--bg-primary);
-        border-top: 1px solid var(--border-color);
-        z-index: 100;
-    }
-
-    .controls-bar span {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
     @keyframes saveFlash {
         0% { transform: scale(1); }
         50% { transform: scale(1.02); }
@@ -416,8 +394,20 @@
     let preloadedBatches = [];
     let isPreloading = false;
 
-    async function fetchBatch() {
-        const res = await fetch('/api/items/next?count=5');
+    // Track IDs to exclude from preloading (current + preloaded items)
+    function getExcludeIds() {
+        const ids = new Set();
+        currentItems.forEach(item => ids.add(item.id));
+        preloadedBatches.forEach(batch => batch.forEach(item => ids.add(item.id)));
+        return [...ids];
+    }
+
+    async function fetchBatch(excludeIds = []) {
+        let url = '/api/items/next?count=5';
+        if (excludeIds.length > 0) {
+            url += '&exclude=' + excludeIds.join(',');
+        }
+        const res = await fetch(url);
         const data = await res.json();
         return data.items;
     }
@@ -428,7 +418,8 @@
         isPreloading = true;
 
         while (preloadedBatches.length < 2) {
-            const batch = await fetchBatch();
+            const excludeIds = getExcludeIds();
+            const batch = await fetchBatch(excludeIds);
             if (batch.length === 0) break;
             preloadedBatches.push(batch);
             // Preload images
@@ -452,7 +443,7 @@
             items = await fetchBatch();
         }
 
-        // Start preloading more
+        // Start preloading more (don't await - run in background)
         ensurePreloaded();
 
         if (items.length === 0) {

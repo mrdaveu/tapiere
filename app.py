@@ -479,6 +479,7 @@ async def api_stats():
 async def get_next_items(
     request: Request,
     count: int = 5,
+    exclude: str = None,
     user: dict = Depends(get_current_user_optional)
 ):
     """Get next unseen items for the reroll view."""
@@ -500,7 +501,15 @@ async def get_next_items(
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    items = get_next_unseen(count)
+    # Parse exclude IDs for preloading
+    exclude_ids = []
+    if exclude:
+        try:
+            exclude_ids = [int(x) for x in exclude.split(',') if x.strip()]
+        except ValueError:
+            pass
+
+    items = get_next_unseen(count, exclude_ids=exclude_ids)
     return {"items": items, "count": len(items)}
 
 

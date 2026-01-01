@@ -292,21 +292,31 @@ def init_db():
     print(f"Database initialized at {DB_PATH}")
 
 
-def get_next_unseen(count: int = 5) -> List[dict]:
+def get_next_unseen(count: int = 5, exclude_ids: List[int] = None) -> List[dict]:
     """Get next N unseen, unsaved, unhidden items for the reroll view, ordered by keyword priority."""
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("""
+
+    # Build query with optional exclusion for preloading
+    exclude_clause = ""
+    params = []
+    if exclude_ids:
+        placeholders = ','.join('?' * len(exclude_ids))
+        exclude_clause = f" AND i.id NOT IN ({placeholders})"
+        params.extend(exclude_ids)
+    params.append(count)
+
+    cursor.execute(f"""
         SELECT i.id, i.source, i.source_id, i.title, i.price, i.image_url, i.url,
                i.saved, i.stars, i.keyword_id, i.category_id,
                k.keyword as keyword_name, k.deck_id, d.name as deck_name
         FROM items i
         LEFT JOIN keywords k ON i.keyword_id = k.id
         LEFT JOIN decks d ON k.deck_id = d.id
-        WHERE i.seen = FALSE AND i.saved = FALSE AND (i.hidden = FALSE OR i.hidden IS NULL)
+        WHERE i.seen = FALSE AND i.saved = FALSE AND (i.hidden = FALSE OR i.hidden IS NULL){exclude_clause}
         ORDER BY COALESCE(k.priority, 0) DESC, i.scraped_at DESC
         LIMIT ?
-    """, (count,))
+    """, params)
     items = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return items
