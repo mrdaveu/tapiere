@@ -419,7 +419,9 @@
 
         while (preloadedBatches.length < 2) {
             const excludeIds = getExcludeIds();
+            console.log('Preloading with exclude:', excludeIds);
             const batch = await fetchBatch(excludeIds);
+            console.log('Preloaded batch:', batch.map(i => i.id));
             if (batch.length === 0) break;
             preloadedBatches.push(batch);
             // Preload images
@@ -439,12 +441,12 @@
         // Use preloaded batch if available
         if (preloadedBatches.length > 0) {
             items = preloadedBatches.shift();
+            console.log('Using preloaded batch, remaining:', preloadedBatches.length);
         } else {
             items = await fetchBatch();
+            console.log('Fetched fresh batch');
         }
-
-        // Start preloading more (don't await - run in background)
-        ensurePreloaded();
+        console.log('Items to display:', items.map(i => i.id));
 
         if (items.length === 0) {
             document.getElementById('cardsContainer').style.display = 'none';
@@ -466,6 +468,9 @@
         loadNavStats();
         updateTopbarKeyword();
         loadKeywordsDropdown();
+
+        // Start preloading more AFTER currentItems is set (don't await - run in background)
+        ensurePreloaded();
     }
 
     async function showEmptyState() {
