@@ -143,7 +143,7 @@ async def scrape_mercari_fast(keyword: str, max_items: int = 300,
     """
     try:
         import requests
-        from mercari.DpopUtils import generate_DPOP
+        from mercari_api import generate_dpop
     except ImportError:
         print("Missing mercari package. Run: pip install mercari")
         return []
@@ -163,7 +163,7 @@ async def scrape_mercari_fast(keyword: str, max_items: int = 300,
     has_next_page = True
 
     while has_next_page and len(all_items) < max_items:
-        dpop = generate_DPOP(uuid="Mercari Python Bot", method="POST", url=search_url)
+        dpop = generate_dpop(uuid="Mercari Python Bot", method="POST", url=search_url)
 
         headers = {
             'DPOP': dpop,
@@ -295,7 +295,7 @@ def scrape_mercari(keyword: str, max_items: int = 300, headless: bool = True,
     """
     try:
         import requests
-        from mercari.DpopUtils import generate_DPOP
+        from mercari_api import generate_dpop
     except ImportError:
         print("Missing mercari package. Run: pip install mercari")
         return []
@@ -316,7 +316,7 @@ def scrape_mercari(keyword: str, max_items: int = 300, headless: bool = True,
 
     with tqdm(total=max_items, desc="[Mercari]") as pbar:
         while has_next_page and len(all_items) < max_items:
-            dpop = generate_DPOP(uuid="Mercari Python Bot", method="POST", url=search_url)
+            dpop = generate_dpop(uuid="Mercari Python Bot", method="POST", url=search_url)
 
             headers = {
                 'DPOP': dpop,

@@ -23,8 +23,8 @@ numpy>=1.24.0
 # LLM API
 openai>=1.0.0
 
-# Mercari API
-mercari==2.2.1
+# Mercari API - local implementation with pure-python ecdsa fallback
+ecdsa>=0.18.0
 
 # Email - using httpx directly to call Resend API (no resend package needed)
 

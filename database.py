@@ -1087,7 +1087,7 @@ def get_category_ancestors(cat_id: str) -> List[str]:
 def fetch_mercari_category_hierarchy(cat_id: str) -> List[dict]:
     """Fetch category hierarchy from Mercari API and cache it. Returns list from root to leaf."""
     import requests
-    from mercari.DpopUtils import generate_DPOP
+    from mercari_api import generate_dpop
 
     # Extract numeric ID
     numeric_id = cat_id.replace("mercari:", "")
@@ -1109,7 +1109,7 @@ def fetch_mercari_category_hierarchy(cat_id: str) -> List[dict]:
 
     try:
         api_url = "https://api.mercari.jp/items/get"
-        dpop = generate_DPOP(uuid="CategoryFetch", method="GET", url=api_url)
+        dpop = generate_dpop(uuid="CategoryFetch", method="GET", url=api_url)
         headers = {"DPOP": dpop, "X-Platform": "web", "Accept": "*/*"}
         r = requests.get(api_url, headers=headers, params={"id": item_id}, timeout=10)
 

@@ -631,8 +631,8 @@ async def refresh_item_status_endpoint(item_id: int):
             if match:
                 mercari_item_id = match.group(1)
                 # Use mercari library - fast API call, no browser needed
-                from mercari import getItemInfo
-                mercari_item = getItemInfo(mercari_item_id)
+                from mercari_api import get_item_info
+                mercari_item = get_item_info(mercari_item_id)
                 status = mercari_item.status
 
                 # Mercari returns lowercase status like "on_sale", "trading", "sold_out"
@@ -810,10 +810,10 @@ async def import_items_endpoint(request: ImportUrlsRequest):
                 # Direct API call to avoid localization/currency issues
                 try:
                     import requests
-                    from mercari.DpopUtils import generate_DPOP
+                    from mercari_api import generate_dpop
 
                     api_url = "https://api.mercari.jp/items/get"
-                    dpop = generate_DPOP(uuid="Mercari Python Bot", method="GET", url=api_url)
+                    dpop = generate_dpop(uuid="Mercari Python Bot", method="GET", url=api_url)
 
                     headers = {
                         'DPOP': dpop,
@@ -1176,10 +1176,10 @@ async def search_categories_endpoint(keyword: str):
     try:
         # Search Mercari API for category data
         import requests
-        from mercari.DpopUtils import generate_DPOP
+        from mercari_api import generate_dpop
 
         search_url = "https://api.mercari.jp/v2/entities:search"
-        dpop = generate_DPOP(uuid="Mercari Python Bot", method="POST", url=search_url)
+        dpop = generate_dpop(uuid="Mercari Python Bot", method="POST", url=search_url)
 
         headers = {
             'DPOP': dpop,
@@ -1391,8 +1391,8 @@ async def check_sold_status(url: str):
             if match:
                 item_id = match.group(1)
                 # Use mercari library - fast API call, no browser needed
-                from mercari import getItemInfo
-                item = getItemInfo(item_id)
+                from mercari_api import get_item_info
+                item = get_item_info(item_id)
                 status = item.status
 
                 if status == "on_sale":

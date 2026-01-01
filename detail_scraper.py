@@ -31,10 +31,10 @@ def scrape_mercari_detail(url: str, page=None) -> dict:
 
     try:
         import requests
-        from mercari.DpopUtils import generate_DPOP
+        from mercari_api import generate_dpop
 
         api_url = "https://api.mercari.jp/items/get"
-        dpop = generate_DPOP(uuid="Mercari Python Bot", method="GET", url=api_url)
+        dpop = generate_dpop(uuid="Mercari Python Bot", method="GET", url=api_url)
 
         headers = {
             'DPOP': dpop,
