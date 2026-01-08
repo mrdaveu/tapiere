@@ -192,6 +192,26 @@ def queue_detail_scrape(item: dict):
 async def startup():
     init_db()
 
+    # One-time cleanup: delete unseen Rakuten items with placeholder images
+    # This runs on startup to clean up items scraped with the buggy scraper
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            DELETE FROM items
+            WHERE source = 'rakuten'
+              AND seen = 0
+              AND saved = 0
+              AND (image_url LIKE '%item_square_dummy%' OR image_url = '' OR image_url IS NULL)
+        """)
+        deleted = cursor.rowcount
+        conn.commit()
+        conn.close()
+        if deleted > 0:
+            print(f"[Startup] Cleaned up {deleted} Rakuten items with placeholder images")
+    except Exception as e:
+        print(f"[Startup] Error during Rakuten cleanup: {e}")
+
 
 # --- Pydantic Models ---
 

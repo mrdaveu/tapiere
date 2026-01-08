@@ -155,12 +155,13 @@ def scrape_yahoo_detail(url: str, page=None) -> dict:
 def scrape_rakuten_detail(url: str, page=None) -> dict:
     """
     Fetch Rakuten (Fril) item details using httpx.
-    Parses HTML structure - no browser needed.
+    Parses JSON-LD structured data and HTML - no browser needed.
     """
     result = {"description": None, "price": None, "images": [], "sold_status": None}
 
     try:
         import httpx
+        import json
         from bs4 import BeautifulSoup
 
         headers = {
@@ -176,43 +177,53 @@ def scrape_rakuten_detail(url: str, page=None) -> dict:
 
             soup = BeautifulSoup(response.text, "html.parser")
 
-            # Extract description
-            desc_elem = soup.select_one("div.item-detail-description")
-            if desc_elem:
-                result["description"] = desc_elem.get_text(strip=True)
+            # Try to extract from JSON-LD structured data first
+            json_ld = soup.select_one('script[type="application/ld+json"]')
+            if json_ld:
+                try:
+                    data = json.loads(json_ld.string)
+                    if data.get("@type") == "Product":
+                        result["description"] = data.get("description")
+                        if data.get("offers", {}).get("price"):
+                            result["price"] = int(data["offers"]["price"])
+                        # Check availability from JSON-LD
+                        avail = data.get("offers", {}).get("availability", "")
+                        if "OutOfStock" in avail or "SoldOut" in avail:
+                            result["sold_status"] = "sold"
+                        else:
+                            result["sold_status"] = "available"
+                except (json.JSONDecodeError, KeyError, ValueError):
+                    pass
 
-            # Extract price
-            price_elem = soup.select_one("span.item-detail-price-value")
-            if price_elem:
-                price_text = price_elem.get_text(strip=True)
-                price_match = re.search(r'[\d,]+', price_text)
-                if price_match:
-                    result["price"] = int(price_match.group().replace(',', ''))
+            # Extract description from HTML if not found in JSON-LD
+            if not result["description"]:
+                desc_elem = soup.select_one("div.item__description__line-limited")
+                if desc_elem:
+                    result["description"] = desc_elem.get_text(strip=True)
 
-            # Extract images
+            # Extract images from sp-image elements (the main gallery)
             images = []
-            # Main image
-            main_img = soup.select_one("img.item-detail-image")
-            if main_img:
-                img_url = main_img.get("src") or main_img.get("data-src")
-                if img_url:
+            for img in soup.select("img.sp-image"):
+                img_url = img.get("src")
+                if img_url and img_url not in images and "item_square_dummy" not in img_url:
                     images.append(img_url)
 
-            # Thumbnail images
-            thumb_imgs = soup.select("div.item-detail-thumbnails img")
-            for thumb in thumb_imgs:
-                img_url = thumb.get("src") or thumb.get("data-src")
-                if img_url and img_url not in images:
-                    images.append(img_url)
+            # Fallback to og:image if no images found
+            if not images:
+                og_img = soup.select_one('meta[property="og:image"]')
+                if og_img and og_img.get("content"):
+                    images.append(og_img["content"])
 
             result["images"] = images
 
-            # Check if sold
-            sold_elem = soup.select_one("div.item-detail-sold-status, span.sold-status")
-            if sold_elem:
-                result["sold_status"] = "sold"
-            else:
-                result["sold_status"] = "available"
+            # Check sold status from HTML if not determined yet
+            if not result["sold_status"]:
+                # Look for sold indicators
+                sold_text = soup.find(string=re.compile(r'SOLD|売り切れ|売却済み'))
+                if sold_text:
+                    result["sold_status"] = "sold"
+                else:
+                    result["sold_status"] = "available"
 
     except Exception as e:
         print(f"Error fetching Rakuten {url}: {e}")

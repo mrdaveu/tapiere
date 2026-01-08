@@ -293,7 +293,7 @@ async def scrape_rakuten_fast(keyword: str, max_items: int = 300,
                     break
 
                 soup = BeautifulSoup(response.text, "html.parser")
-                items = soup.select("div.item")
+                items = soup.select("div.item-box")
 
                 if not items:
                     print(f"[Rakuten-Fast] No items on page {page_num}, stopping")
@@ -301,7 +301,7 @@ async def scrape_rakuten_fast(keyword: str, max_items: int = 300,
 
                 for item_div in items:
                     # Extract item ID from the link
-                    link = item_div.select_one("a.link_search_image")
+                    link = item_div.select_one("a.link_search_image, a.link_search_title")
                     if not link or not link.get("href"):
                         continue
 
@@ -323,30 +323,43 @@ async def scrape_rakuten_fast(keyword: str, max_items: int = 300,
 
                     consecutive_existing = 0
 
-                    # Extract title
-                    title_elem = item_div.select_one("a.link_search_title span")
-                    title = title_elem.get_text(strip=True) if title_elem else "Untitled"
+                    # Extract title from link title attribute or inner text
+                    title_link = item_div.select_one("a.link_search_title")
+                    if title_link:
+                        # Title is in the title attribute, extract just the item name part
+                        title = title_link.get("title", "")
+                        # The title format is "ITEM NAME BRAND(Brand Name)の..." - extract just item name
+                        if title:
+                            # Take everything before the brand/category suffix
+                            title = title.split("の")[0] if "の" in title else title
+                    if not title:
+                        title = "Untitled"
 
-                    # Extract price
-                    price_elem = item_div.select_one("p.item-box__item-price")
+                    # Extract price from data-content attribute
+                    price_elem = item_div.select_one("p.item-box__item-price span[data-content]")
                     price = 0
                     if price_elem:
-                        price_text = price_elem.get_text(strip=True)
-                        price_match = re.search(r'[\d,]+', price_text)
-                        if price_match:
-                            price = int(price_match.group().replace(',', ''))
+                        price_val = price_elem.get("data-content", "")
+                        if price_val.isdigit():
+                            price = int(price_val)
+                    # Fallback to text parsing
+                    if price == 0:
+                        price_elem = item_div.select_one("p.item-box__item-price")
+                        if price_elem:
+                            price_text = price_elem.get_text(strip=True)
+                            price_match = re.search(r'[\d,]+', price_text)
+                            if price_match:
+                                price = int(price_match.group().replace(',', ''))
 
-                    # Extract image
-                    img_elem = item_div.select_one("img.img-responsive")
-                    image_url = img_elem.get("src") or img_elem.get("data-original") if img_elem else ""
-
-                    # Extract brand (if available)
-                    brand_elem = item_div.select_one("a.brand-name")
-                    brand = brand_elem.get_text(strip=True) if brand_elem else None
-
-                    # Build title with brand if available
-                    if brand and brand not in title:
-                        title = f"{brand} {title}"
+                    # Extract image - prioritize data-original (real image) over src (placeholder)
+                    img_elem = item_div.select_one("img.img-responsive, img.lazy")
+                    image_url = ""
+                    if img_elem:
+                        # data-original contains the real image URL
+                        image_url = img_elem.get("data-original") or img_elem.get("src") or ""
+                        # Skip if it's the placeholder image
+                        if "item_square_dummy" in image_url:
+                            image_url = ""
 
                     all_items.append({
                         "source": "rakuten",
@@ -355,7 +368,7 @@ async def scrape_rakuten_fast(keyword: str, max_items: int = 300,
                         "title": title[:200],
                         "price": price,
                         "image_url": image_url,
-                        "category_id": None,  # Can be extracted later if needed
+                        "category_id": None,
                     })
 
                 await asyncio.sleep(random.uniform(0.5, 1.5))
@@ -369,19 +382,26 @@ async def scrape_rakuten_fast(keyword: str, max_items: int = 300,
     return all_items
 
 
-async def scrape_keyword_fast(keyword_id: int, keyword: str, source: str = 'both',
+async def scrape_keyword_fast(keyword_id: int, keyword: str, source: str = 'all',
                               max_items: int = 300) -> dict:
     """
     Fast async scraper that runs multiple sources in parallel.
+    Source can be: 'all', 'both' (legacy), single source, or comma-separated (e.g. 'mercari,yahoo')
     """
     all_items = []
 
+    # Normalize source - handle comma-separated and legacy 'both'
+    if source in ('all', 'both'):
+        sources = {'mercari', 'yahoo', 'rakuten'}
+    else:
+        sources = set(s.strip() for s in source.split(','))
+
     tasks = []
-    if source in ('mercari', 'both', 'all'):
+    if 'mercari' in sources:
         tasks.append(scrape_mercari_fast(keyword, max_items=max_items, keyword_id=keyword_id))
-    if source in ('yahoo', 'both', 'all'):
+    if 'yahoo' in sources:
         tasks.append(scrape_yahoo_fast(keyword, max_items=max_items, keyword_id=keyword_id))
-    if source in ('rakuten', 'all'):
+    if 'rakuten' in sources:
         tasks.append(scrape_rakuten_fast(keyword, max_items=max_items, keyword_id=keyword_id))
 
     if tasks:

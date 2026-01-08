@@ -244,24 +244,80 @@
         color: var(--text-primary);
     }
 
-    .keyword-input-large {
+    /* Borderless keyword input area - Mochi style */
+    .keyword-input-area {
         width: 100%;
-        padding: 16px;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        background: var(--bg-primary);
+        min-height: 60px;
+        padding: 8px 0;
+        border: none;
+        background: transparent;
         color: var(--text-primary);
-        font-size: 16px;
+        font-size: 24px;
+        font-weight: 500;
+        line-height: 1.4;
+        outline: none;
         margin-bottom: 16px;
     }
 
-    .keyword-input-large::placeholder {
+    .keyword-input-area:empty:before {
+        content: attr(data-placeholder);
         color: var(--text-muted);
+        pointer-events: none;
     }
 
-    .keyword-input-large:focus {
+    .keyword-input-area:focus {
         outline: none;
+    }
+
+    /* Source toggle buttons */
+    .source-toggles {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+
+    .source-toggle {
+        padding: 6px 14px;
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .source-toggle:hover {
+        border-color: var(--text-secondary);
+        color: var(--text-secondary);
+    }
+
+    .source-toggle.active {
+        background: var(--accent-primary);
         border-color: var(--accent-primary);
+        color: white;
+    }
+
+    .source-toggle.active:hover {
+        background: var(--accent-primary-hover, var(--accent-primary));
+        border-color: var(--accent-primary-hover, var(--accent-primary));
+    }
+
+    /* Per-source colors when active */
+    .source-toggle[data-source="mercari"].active {
+        background: var(--accent-mercari, #2b6cb0);
+        border-color: var(--accent-mercari, #2b6cb0);
+    }
+
+    .source-toggle[data-source="yahoo"].active {
+        background: var(--accent-yahoo, #c53030);
+        border-color: var(--accent-yahoo, #c53030);
+    }
+
+    .source-toggle[data-source="rakuten"].active {
+        background: #ea580c;
+        border-color: #ea580c;
     }
 
     /* Category sections */
@@ -421,21 +477,23 @@
             <button class="modal-close" onclick="closeKeywordModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <input type="text" class="keyword-input-large" id="keywordInput" placeholder="What do you want to find?">
+            <!-- Borderless keyword input area -->
+            <div class="keyword-input-area"
+                 id="keywordInput"
+                 contenteditable="true"
+                 data-placeholder="What do you want to find?"
+                 onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); saveKeyword(); }"></div>
 
-            <div class="form-group" style="margin: 16px 0;">
-                <label style="display: block; margin-bottom: 8px; font-size: 12px; font-weight: 500; color: var(--text-secondary);">SOURCE</label>
-                <select id="sourceSelect" style="width: 100%; padding: 8px 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 14px;">
-                    <option value="all">All (Mercari + Yahoo + Rakuten)</option>
-                    <option value="mercari">Mercari</option>
-                    <option value="yahoo">Yahoo Auctions</option>
-                    <option value="rakuten">Rakuten Fril</option>
-                </select>
+            <!-- Source toggle buttons (multi-select) -->
+            <div class="source-toggles">
+                <button type="button" class="source-toggle active" data-source="mercari">Mercari</button>
+                <button type="button" class="source-toggle active" data-source="yahoo">Yahoo</button>
+                <button type="button" class="source-toggle active" data-source="rakuten">Rakuten</button>
             </div>
 
             <div class="category-section">
                 <div class="category-section-header">
-                    <span>ONLY SEARCH</span>
+                    <span>WHITELIST</span>
                     <span class="loading" id="categoriesLoading" style="display: none;">Loading categories...</span>
                 </div>
                 <div class="category-tags" id="categoryTags">
@@ -543,14 +601,14 @@
         availableCategories = [];
 
         const input = document.getElementById('keywordInput');
-        const sourceSelect = document.getElementById('sourceSelect');
         const deleteBtn = document.getElementById('deleteKeywordBtn');
 
         if (keywordId) {
             const kw = keywords.find(k => k.id === keywordId);
             if (kw) {
-                input.value = kw.keyword;
-                sourceSelect.value = kw.source || 'all';
+                input.textContent = kw.keyword;
+                // Set source toggles based on stored source
+                setSourceToggles(kw.source || 'all');
                 selectedCategories = kw.whitelist_categories || [];
                 // blocked_categories now has: [{entry_id, category_id, category_name}, ...]
                 hiddenCategories = (kw.blocked_categories || []).map(c => ({
@@ -563,8 +621,9 @@
             }
             deleteBtn.style.display = 'inline-block';
         } else {
-            input.value = '';
-            sourceSelect.value = 'all';
+            input.textContent = '';
+            // Default: all sources selected
+            setSourceToggles('all');
             deleteBtn.style.display = 'none';
         }
 
@@ -575,13 +634,52 @@
         input.focus();
     }
 
+    // Set source toggle buttons based on source string
+    function setSourceToggles(source) {
+        const toggles = document.querySelectorAll('.source-toggle');
+        if (source === 'all') {
+            // All sources active
+            toggles.forEach(t => t.classList.add('active'));
+        } else {
+            // Single source or comma-separated
+            const sources = source.split(',').map(s => s.trim());
+            toggles.forEach(t => {
+                if (sources.includes(t.dataset.source)) {
+                    t.classList.add('active');
+                } else {
+                    t.classList.remove('active');
+                }
+            });
+        }
+    }
+
+    // Get source string from toggle buttons
+    function getSourceFromToggles() {
+        const active = document.querySelectorAll('.source-toggle.active');
+        if (active.length === 3) {
+            return 'all';
+        } else if (active.length === 0) {
+            // If none selected, default to all
+            return 'all';
+        } else {
+            return Array.from(active).map(t => t.dataset.source).join(',');
+        }
+    }
+
+    // Toggle button click handler
+    document.querySelectorAll('.source-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            btn.classList.toggle('active');
+        });
+    });
+
     function editKeyword(keywordId) {
         openKeywordModal(keywordId);
     }
 
     function closeKeywordModal() {
         document.getElementById('keywordModalOverlay').classList.remove('active');
-        document.getElementById('keywordInput').value = '';
+        document.getElementById('keywordInput').textContent = '';
         currentKeywordId = null;
     }
 
@@ -589,7 +687,7 @@
     let categoryFetchTimeout = null;
     document.getElementById('keywordInput').addEventListener('input', (e) => {
         clearTimeout(categoryFetchTimeout);
-        const value = e.target.value.trim();
+        const value = e.target.textContent.trim();
 
         if (value.length >= 2) {
             document.getElementById('categoriesLoading').style.display = 'inline';
@@ -709,8 +807,8 @@
     }
 
     async function saveKeyword() {
-        const keyword = document.getElementById('keywordInput').value.trim();
-        const source = document.getElementById('sourceSelect').value;
+        const keyword = document.getElementById('keywordInput').textContent.trim();
+        const source = getSourceFromToggles();
         if (!keyword) return;
 
         if (currentKeywordId) {
