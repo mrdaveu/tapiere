@@ -87,14 +87,22 @@
             return match ? parseInt(match[1]) : null;
         }
 
-        // Load decks in sidebar
-        async function loadNavDecks() {
+        // Load decks in sidebar (with caching to prevent flashing)
+        let navDecksCache = null;
+        let navDecksLoading = false;
+
+        async function loadNavDecks(forceRefresh = false) {
+            if (navDecksLoading) return;
+            if (navDecksCache && !forceRefresh) return;
+
+            navDecksLoading = true;
             try {
                 const res = await fetch('/api/decks');
                 const data = await res.json();
                 const list = document.getElementById('navDecksList');
                 if (!list) return;
 
+                navDecksCache = data.decks;
                 const activeDeckId = getActiveDeckId();
 
                 list.innerHTML = data.decks.map(deck => `
@@ -106,6 +114,8 @@
                 `).join('');
             } catch (e) {
                 console.error('Failed to load decks:', e);
+            } finally {
+                navDecksLoading = false;
             }
         }
 
@@ -131,7 +141,7 @@
             });
 
             closeNewDeckModal();
-            loadNavDecks();
+            loadNavDecks(true); // Force refresh after creating new deck
         }
 
         // Handle Enter key in deck modal

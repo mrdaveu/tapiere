@@ -152,6 +152,74 @@ def scrape_yahoo_detail(url: str, page=None) -> dict:
     return result
 
 
+def scrape_rakuten_detail(url: str, page=None) -> dict:
+    """
+    Fetch Rakuten (Fril) item details using httpx.
+    Parses HTML structure - no browser needed.
+    """
+    result = {"description": None, "price": None, "images": [], "sold_status": None}
+
+    try:
+        import httpx
+        from bs4 import BeautifulSoup
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept-Language": "ja-JP,ja;q=0.9",
+        }
+
+        with httpx.Client(headers=headers, follow_redirects=True, timeout=30.0) as client:
+            response = client.get(url)
+            if response.status_code != 200:
+                print(f"Error fetching Rakuten {url}: Status {response.status_code}")
+                return result
+
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            # Extract description
+            desc_elem = soup.select_one("div.item-detail-description")
+            if desc_elem:
+                result["description"] = desc_elem.get_text(strip=True)
+
+            # Extract price
+            price_elem = soup.select_one("span.item-detail-price-value")
+            if price_elem:
+                price_text = price_elem.get_text(strip=True)
+                price_match = re.search(r'[\d,]+', price_text)
+                if price_match:
+                    result["price"] = int(price_match.group().replace(',', ''))
+
+            # Extract images
+            images = []
+            # Main image
+            main_img = soup.select_one("img.item-detail-image")
+            if main_img:
+                img_url = main_img.get("src") or main_img.get("data-src")
+                if img_url:
+                    images.append(img_url)
+
+            # Thumbnail images
+            thumb_imgs = soup.select("div.item-detail-thumbnails img")
+            for thumb in thumb_imgs:
+                img_url = thumb.get("src") or thumb.get("data-src")
+                if img_url and img_url not in images:
+                    images.append(img_url)
+
+            result["images"] = images
+
+            # Check if sold
+            sold_elem = soup.select_one("div.item-detail-sold-status, span.sold-status")
+            if sold_elem:
+                result["sold_status"] = "sold"
+            else:
+                result["sold_status"] = "available"
+
+    except Exception as e:
+        print(f"Error fetching Rakuten {url}: {e}")
+
+    return result
+
+
 def scrape_item_detail(item: dict, page=None) -> dict:
     """
     Scrape detail for an item based on its source.
@@ -170,6 +238,8 @@ def scrape_item_detail(item: dict, page=None) -> dict:
         return scrape_mercari_detail(url, page)
     elif source == 'yahoo':
         return scrape_yahoo_detail(url, page)
+    elif source == 'rakuten':
+        return scrape_rakuten_detail(url, page)
     else:
         print(f"Unknown source: {source}")
         return {"description": None, "price": None, "images": []}

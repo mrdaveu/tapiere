@@ -389,13 +389,13 @@ def set_item_cart(item_id: int, in_cart: bool):
 
 
 def get_saved_items(source: str = None, sort_by: str = 'scraped_at', order: str = 'desc',
-                    filter_cart: bool = False, filter_stars: int = None,
+                    filter_cart: bool = False, filter_stars: List[int] = None,
                     filter_deck: int = None, filter_keyword: int = None) -> List[dict]:
     """Get all saved items with optional additive filtering and sorting.
 
     Filters are additive (AND logic):
     - filter_cart: True to show only cart items
-    - filter_stars: 1-5 to show items with that star rating
+    - filter_stars: list of 1-5 to show items with those star ratings (OR logic within stars)
     - filter_deck: deck_id to show items from that deck
     - filter_keyword: keyword_id to show items from that keyword
     """
@@ -411,16 +411,17 @@ def get_saved_items(source: str = None, sort_by: str = 'scraped_at', order: str 
     """
     params = []
 
-    if source and source in ('mercari', 'yahoo'):
+    if source and source in ('mercari', 'yahoo', 'rakuten'):
         query += " AND i.source = ?"
         params.append(source)
 
     # Apply additive filters (all conditions are ANDed together)
     if filter_cart:
         query += " AND i.in_cart = TRUE"
-    if filter_stars is not None:
-        query += " AND i.stars = ?"
-        params.append(int(filter_stars))
+    if filter_stars is not None and len(filter_stars) > 0:
+        placeholders = ','.join('?' * len(filter_stars))
+        query += f" AND i.stars IN ({placeholders})"
+        params.extend([int(s) for s in filter_stars])
     if filter_deck is not None:
         query += " AND k.deck_id = ?"
         params.append(int(filter_deck))
@@ -725,7 +726,7 @@ def update_item_fit_score(item_id: int, score: int):
 
 def add_keyword(keyword: str, source: str = 'both', deck_id: int = None) -> int:
     """Add a new keyword. Returns keyword ID."""
-    if source not in ('mercari', 'yahoo', 'both'):
+    if source not in ('mercari', 'yahoo', 'rakuten', 'both', 'all'):
         source = 'both'
 
     # Default to deck_id 1 (Default deck) if not specified

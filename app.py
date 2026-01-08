@@ -3,7 +3,7 @@ TAPIERE - Shopping Helper for Japanese Marketplaces
 FastAPI backend with embedded frontend and multi-user auth.
 """
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Cookie, Depends, UploadFile, File, Header
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Cookie, Depends, UploadFile, File, Header, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -563,7 +563,7 @@ async def get_saved_items_endpoint(
     sort: str = "date",
     order: str = "desc",
     filter_cart: int = None,
-    filter_stars: int = None,
+    filter_stars: List[int] = Query(None),
     filter_deck: int = None,
     filter_keyword: int = None
 ):
@@ -571,7 +571,7 @@ async def get_saved_items_endpoint(
 
     Filters are additive (AND logic):
     - filter_cart: 1 to show only cart items
-    - filter_stars: 1-5 to show items with that star rating
+    - filter_stars: list of 1-5 to show items with those star ratings (OR logic within stars)
     - filter_deck: deck_id to show items from that deck
     - filter_keyword: keyword_id to show items from that keyword
     """

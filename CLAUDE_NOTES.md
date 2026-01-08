@@ -2,12 +2,12 @@
 
 ## Product Vision
 
-**TAPIERE** - Personal shopping assistant for Japanese marketplaces (Mercari, Yahoo Auctions Japan).
+**TAPIERE** - Personal shopping assistant for Japanese marketplaces (Mercari, Yahoo Auctions Japan, Rakuten Fril).
 
 - **Fashion-first but category-agnostic** - optimized for clothing/textiles but works for any item type
 - **Multi-user beta** - Invite-only registration with magic link auth
 - **Public deck sharing** - Users can share their saved items at `/u/username/deck-slug`
-- **Multi-marketplace expansion planned** - currently JP (Mercari, Yahoo), future: Rakuma, Surugaya, eBay, Grailed, Depop
+- **Multi-marketplace support** - currently JP (Mercari, Yahoo, Rakuten Fril), future: Surugaya, eBay, Grailed, Depop
 
 ---
 
@@ -57,7 +57,7 @@ Users have **established keywords** (brands, styles) they continuously monitor:
 |------|---------|
 | `app.py` | FastAPI app with 50+ REST endpoints, auth middleware |
 | `database.py` | Schema, migrations, all DB queries, multi-user support |
-| `scraper.py` | Mercari (API) + Yahoo (HTTP) scrapers |
+| `scraper.py` | Mercari (API) + Yahoo (HTTP) + Rakuten (HTTP) scrapers |
 | `detail_scraper.py` | Individual item page scraping via httpx (no browser) |
 | `mercari_api.py` | Local Mercari API client with DPOP auth (pure Python) |
 | `email_service.py` | Resend API via httpx for magic link emails |
@@ -136,7 +136,8 @@ category_blocklist (id, user_id, category_id, keyword_id, created_at)  -- global
 - Sorts by **newest first**
 - Stops after **5 consecutive existing items** (fast incremental updates)
 - Background detail scraping queues when user saves an item
-- Uses httpx for Yahoo, local mercari_api.py for Mercari (no browser needed)
+- Uses httpx for Yahoo and Rakuten, local mercari_api.py for Mercari (no browser needed)
+- Rakuten (Fril) scraper parses HTML structure similar to Yahoo scraper
 
 ### Preloading (Reroll View)
 - Client preloads 2 batches ahead for instant navigation

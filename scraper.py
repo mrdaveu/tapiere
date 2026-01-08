@@ -251,18 +251,138 @@ async def scrape_mercari_fast(keyword: str, max_items: int = 300,
     return all_items
 
 
+async def scrape_rakuten_fast(keyword: str, max_items: int = 300,
+                               existing_ids: set = None, keyword_id: int = None) -> list:
+    """
+    Fast Rakuten (Fril) scraper using direct HTTP requests.
+    Parses HTML structure - no browser needed.
+    """
+    try:
+        import httpx
+        from bs4 import BeautifulSoup
+    except ImportError:
+        print("Missing dependencies. Run: pip install httpx beautifulsoup4")
+        return []
+
+    if existing_ids is None:
+        existing_ids = get_existing_source_ids('rakuten', keyword_id)
+
+    all_items = []
+    consecutive_existing = 0
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "ja-JP,ja;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
+
+    async with httpx.AsyncClient(headers=headers, follow_redirects=True, timeout=30.0) as client:
+        page_num = 1
+        max_pages = 10
+
+        print(f"[Rakuten-Fast] Searching: {keyword}")
+
+        while page_num <= max_pages and len(all_items) < max_items:
+            # Rakuten (Fril) search URL
+            url = f"https://fril.jp/s?query={quote(keyword)}&sort=1&page={page_num}"
+
+            try:
+                response = await client.get(url)
+                if response.status_code != 200:
+                    print(f"[Rakuten-Fast] Error: Status {response.status_code}")
+                    break
+
+                soup = BeautifulSoup(response.text, "html.parser")
+                items = soup.select("div.item")
+
+                if not items:
+                    print(f"[Rakuten-Fast] No items on page {page_num}, stopping")
+                    break
+
+                for item_div in items:
+                    # Extract item ID from the link
+                    link = item_div.select_one("a.link_search_image")
+                    if not link or not link.get("href"):
+                        continue
+
+                    item_url = link["href"]
+                    # Extract item ID from URL like: https://item.fril.jp/f86ec7e80b0df0cedc30ddd1548841b1
+                    item_id_match = re.search(r'/([a-f0-9]{32})', item_url)
+                    if not item_id_match:
+                        continue
+
+                    item_id = item_id_match.group(1)
+
+                    # Check if we already have this item
+                    if item_id in existing_ids:
+                        consecutive_existing += 1
+                        if consecutive_existing >= OVERLAP_THRESHOLD:
+                            print(f"[Rakuten-Fast] Found {consecutive_existing} consecutive existing items, stopping")
+                            return all_items
+                        continue
+
+                    consecutive_existing = 0
+
+                    # Extract title
+                    title_elem = item_div.select_one("a.link_search_title span")
+                    title = title_elem.get_text(strip=True) if title_elem else "Untitled"
+
+                    # Extract price
+                    price_elem = item_div.select_one("p.item-box__item-price")
+                    price = 0
+                    if price_elem:
+                        price_text = price_elem.get_text(strip=True)
+                        price_match = re.search(r'[\d,]+', price_text)
+                        if price_match:
+                            price = int(price_match.group().replace(',', ''))
+
+                    # Extract image
+                    img_elem = item_div.select_one("img.img-responsive")
+                    image_url = img_elem.get("src") or img_elem.get("data-original") if img_elem else ""
+
+                    # Extract brand (if available)
+                    brand_elem = item_div.select_one("a.brand-name")
+                    brand = brand_elem.get_text(strip=True) if brand_elem else None
+
+                    # Build title with brand if available
+                    if brand and brand not in title:
+                        title = f"{brand} {title}"
+
+                    all_items.append({
+                        "source": "rakuten",
+                        "source_id": item_id,
+                        "url": f"https://item.fril.jp/{item_id}",
+                        "title": title[:200],
+                        "price": price,
+                        "image_url": image_url,
+                        "category_id": None,  # Can be extracted later if needed
+                    })
+
+                await asyncio.sleep(random.uniform(0.5, 1.5))
+                page_num += 1
+
+            except Exception as e:
+                print(f"[Rakuten-Fast] Error on page {page_num}: {e}")
+                break
+
+    print(f"[Rakuten-Fast] Scraped {len(all_items)} new items")
+    return all_items
+
+
 async def scrape_keyword_fast(keyword_id: int, keyword: str, source: str = 'both',
                               max_items: int = 300) -> dict:
     """
-    Fast async scraper that runs both sources in parallel.
+    Fast async scraper that runs multiple sources in parallel.
     """
     all_items = []
 
     tasks = []
-    if source in ('mercari', 'both'):
+    if source in ('mercari', 'both', 'all'):
         tasks.append(scrape_mercari_fast(keyword, max_items=max_items, keyword_id=keyword_id))
-    if source in ('yahoo', 'both'):
+    if source in ('yahoo', 'both', 'all'):
         tasks.append(scrape_yahoo_fast(keyword, max_items=max_items, keyword_id=keyword_id))
+    if source in ('rakuten', 'all'):
+        tasks.append(scrape_rakuten_fast(keyword, max_items=max_items, keyword_id=keyword_id))
 
     if tasks:
         results = await asyncio.gather(*tasks)

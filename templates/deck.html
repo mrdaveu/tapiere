@@ -109,10 +109,33 @@
         background: var(--accent-warning);
         color: white;
         border-radius: 3px;
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 600;
         padding: 2px 5px;
         margin-left: 6px;
+        letter-spacing: 0.3px;
+    }
+
+    .sold-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: rgba(239, 68, 68, 0.9);
+        color: white;
+        border-radius: 3px;
+        font-size: 9px;
+        font-weight: 700;
+        padding: 4px 6px;
+        letter-spacing: 0.5px;
+        z-index: 5;
+    }
+
+    .grid-card.sold {
+        opacity: 0.7;
+    }
+
+    .grid-card.sold img {
+        filter: grayscale(30%);
     }
 
     /* Split pane layout */
@@ -765,6 +788,18 @@
         <button class="topbar-nav" onclick="history.back()" title="Go back">←</button>
         <button class="topbar-nav" onclick="history.forward()" title="Go forward">→</button>
         <span class="topbar-title">Saved Items</span>
+        <span class="topbar-title" style="margin-left: 8px; margin-right: 0;">→</span>
+        <div class="dropdown-wrapper" id="topbarDeckDropdown" style="margin-left: 8px;">
+            <div class="dropdown-trigger" onclick="toggleDropdown('topbarDeckDropdown')">
+                <span id="topbarDeckLabel">All Decks</span>
+                <span class="arrow">▼</span>
+            </div>
+            <div class="dropdown-menu" id="topbarDeckMenu">
+                <div class="dropdown-item selected" data-deck="all" onclick="applyTopbarDeckFilter(null, 'All Decks')">All Decks</div>
+                <div class="dropdown-divider"></div>
+                <div id="topbarDeckFilters"></div>
+            </div>
+        </div>
         <div style="flex: 1;"></div>
         <button class="view-toggle-btn" id="viewToggleBtn" onclick="toggleView()" style="display: none;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -882,7 +917,7 @@
     let currentImages = [];
     let itemDetailsCache = {};
     let currentSort = 'date-desc';
-    let currentFilters = { stars: null, keyword: null, deck: null, cart: false };
+    let currentFilters = { stars: [], keyword: null, deck: null, cart: false };
     let decksWithKeywords = [];
     let starPopoverVisible = false;
     let viewMode = 'grid'; // 'grid' or 'list'
@@ -936,7 +971,13 @@
         if (type === 'cart') {
             currentFilters.cart = !currentFilters.cart;
         } else if (type === 'stars') {
-            currentFilters.stars = currentFilters.stars === value ? null : value;
+            // Toggle star filter - allow multiple selections
+            const idx = currentFilters.stars.indexOf(value);
+            if (idx > -1) {
+                currentFilters.stars.splice(idx, 1);
+            } else {
+                currentFilters.stars.push(value);
+            }
         } else if (type === 'deck') {
             currentFilters.deck = currentFilters.deck === value ? null : value;
             currentFilters.keyword = null;
@@ -948,12 +989,19 @@
         updateFilterBadges();
     }
 
-    function clearFilter(type) {
+    function clearFilter(type, value) {
         if (type === 'cart') currentFilters.cart = false;
-        else if (type === 'stars') currentFilters.stars = null;
+        else if (type === 'stars') {
+            if (value) {
+                const idx = currentFilters.stars.indexOf(value);
+                if (idx > -1) currentFilters.stars.splice(idx, 1);
+            } else {
+                currentFilters.stars = [];
+            }
+        }
         else if (type === 'deck') currentFilters.deck = null;
         else if (type === 'keyword') currentFilters.keyword = null;
-        else currentFilters = { stars: null, keyword: null, deck: null, cart: false };
+        else currentFilters = { stars: [], keyword: null, deck: null, cart: false };
         loadItems();
         updateFilterBadges();
     }
@@ -963,8 +1011,10 @@
         if (currentFilters.cart) {
             badges.push(`<span class="filter-badge">Cart <span class="clear" onclick="clearFilter('cart')">×</span></span>`);
         }
-        if (currentFilters.stars) {
-            badges.push(`<span class="filter-badge">${'★'.repeat(parseInt(currentFilters.stars))} <span class="clear" onclick="clearFilter('stars')">×</span></span>`);
+        if (currentFilters.stars.length > 0) {
+            currentFilters.stars.forEach(star => {
+                badges.push(`<span class="filter-badge">${'★'.repeat(parseInt(star))} <span class="clear" onclick="clearFilter('stars', '${star}')">×</span></span>`);
+            });
         }
         if (currentFilters.deck) {
             const deck = decksWithKeywords.find(d => d.id == currentFilters.deck);
@@ -996,7 +1046,7 @@
     function renderDeckFilters() {
         if (decksWithKeywords.length === 0) {
             document.getElementById('deckFiltersGrid').innerHTML = '';
-            document.getElementById('deckFiltersList').innerHTML = '';
+            document.getElementById('topbarDeckFilters').innerHTML = '';
             return;
         }
         const html = decksWithKeywords.map(deck => {
@@ -1018,13 +1068,37 @@
             `;
         }).join('');
         document.getElementById('deckFiltersGrid').innerHTML = html;
+
+        // Populate topbar deck filter (simple list, no keywords submenu)
+        const topbarHtml = decksWithKeywords.map(deck => {
+            return `<div class="dropdown-item" data-deck="${deck.id}" onclick="applyTopbarDeckFilter(${deck.id}, '${deck.name}')">${deck.name}</div>`;
+        }).join('');
+        document.getElementById('topbarDeckFilters').innerHTML = topbarHtml;
+    }
+
+    function applyTopbarDeckFilter(deckId, deckName) {
+        document.getElementById('topbarDeckLabel').textContent = deckName;
+        document.querySelectorAll('#topbarDeckMenu .dropdown-item').forEach(item => {
+            item.classList.toggle('selected', item.dataset.deck == (deckId || 'all'));
+        });
+        document.querySelectorAll('.dropdown-wrapper').forEach(w => w.classList.remove('open'));
+
+        // Apply deck filter
+        currentFilters.deck = deckId;
+        currentFilters.keyword = null;
+        loadItems();
+        updateFilterBadges();
     }
 
     async function loadItems() {
         const [field, order] = currentSort.split('-');
         let url = `/api/items/saved?sort=${field}&order=${order}`;
         if (currentFilters.cart) url += `&filter_cart=1`;
-        if (currentFilters.stars) url += `&filter_stars=${currentFilters.stars}`;
+        if (currentFilters.stars.length > 0) {
+            currentFilters.stars.forEach(star => {
+                url += `&filter_stars=${star}`;
+            });
+        }
         if (currentFilters.deck) url += `&filter_deck=${currentFilters.deck}`;
         if (currentFilters.keyword) url += `&filter_keyword=${currentFilters.keyword}`;
         const res = await fetch(url);
@@ -1068,11 +1142,12 @@
             return `
                 <div class="grid-card ${isSold ? 'sold' : ''}" onclick="switchToListView(${i})">
                     ${item.in_cart ? '<span class="cart-indicator">C</span>' : ''}
+                    ${isSold ? '<span class="sold-badge">SOLD</span>' : ''}
                     <img src="${item.image_url || ''}" onerror="this.style.background='var(--bg-tertiary)'">
                     <div class="grid-card-info">
                         <div class="grid-card-title">${item.title || 'Untitled'}</div>
                         <div class="grid-card-meta">
-                            <span class="grid-card-price">¥${(item.price || 0).toLocaleString()}${isAuction ? '<span class="auction-tag">A</span>' : ''}</span>
+                            <span class="grid-card-price">¥${(item.price || 0).toLocaleString()}${isAuction ? '<span class="auction-tag">AUCTION</span>' : ''}</span>
                             <span class="grid-card-stars">${stars}</span>
                         </div>
                     </div>
@@ -1099,7 +1174,7 @@
                     <div class="list-item-info">
                         <div class="list-item-title">${item.title || 'Untitled'}</div>
                         <div class="list-item-meta">
-                            <span class="list-item-price">¥${(item.price || 0).toLocaleString()}${isAuction ? '<span class="auction-tag">A</span>' : ''}</span>
+                            <span class="list-item-price">¥${(item.price || 0).toLocaleString()}${isAuction ? '<span class="auction-tag">AUCTION</span>' : ''}</span>
                             <span class="list-item-stars">${stars}</span>
                         </div>
                     </div>
