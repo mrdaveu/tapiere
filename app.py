@@ -195,6 +195,7 @@ async def startup():
     # One-time cleanup: delete unseen Rakuten items with placeholder images
     # This runs on startup to clean up items scraped with the buggy scraper
     try:
+        from database import get_connection
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("""
