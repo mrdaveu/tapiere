@@ -192,13 +192,6 @@ def queue_detail_scrape(item: dict):
 async def startup():
     init_db()
 
-    # Auto-scrape all keywords on startup (in background)
-    keywords = get_keywords()
-    if keywords:
-        print("[Startup] Starting auto-scrape for all keywords...")
-        thread = threading.Thread(target=run_scrape, daemon=True)
-        thread.start()
-
 
 # --- Pydantic Models ---
 

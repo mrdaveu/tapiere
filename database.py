@@ -61,7 +61,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS keywords (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             keyword TEXT NOT NULL UNIQUE,
-            source TEXT DEFAULT 'both',
+            source TEXT DEFAULT 'all',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_scraped_at TIMESTAMP,
             item_count INTEGER DEFAULT 0,
@@ -286,6 +286,9 @@ def init_db():
     if cursor.fetchone()['count'] == 0:
         cursor.execute("INSERT INTO decks (name, priority) VALUES ('Default', 0)")
         cursor.execute("UPDATE keywords SET deck_id = 1 WHERE deck_id IS NULL")
+
+    # Migration: Update 'both' to 'all' for Rakuten support
+    cursor.execute("UPDATE keywords SET source = 'all' WHERE source = 'both'")
 
     conn.commit()
     conn.close()
