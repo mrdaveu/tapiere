@@ -209,8 +209,14 @@ class CartRequest(BaseModel):
 
 class KeywordCreate(BaseModel):
     keyword: str
-    source: str = "both"
+    source: str = "all"
     deck_id: Optional[int] = None
+
+
+class KeywordUpdate(BaseModel):
+    keyword: str
+    source: Optional[str] = None
+    whitelist: Optional[List[str]] = None
 
 
 class MockDataRequest(BaseModel):
@@ -1053,6 +1059,36 @@ async def get_keywords_endpoint():
 async def add_keyword_endpoint(request: KeywordCreate):
     keyword_id = add_keyword(request.keyword, request.source, request.deck_id)
     return {"status": "ok", "keyword_id": keyword_id}
+
+
+@app.put("/api/keywords/{keyword_id}")
+async def update_keyword_endpoint(keyword_id: int, request: KeywordUpdate):
+    """Update keyword text, source, and whitelist.
+
+    Blocklist changes are handled separately via DELETE /api/keywords/{id}/blocklist.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Update keyword text and source
+    cursor.execute(
+        "UPDATE keywords SET keyword = ?, source = ? WHERE id = ?",
+        (request.keyword, request.source or 'all', keyword_id)
+    )
+
+    # Handle whitelist updates (if provided)
+    if request.whitelist is not None:
+        # Clear existing whitelist and add new ones
+        cursor.execute("DELETE FROM keyword_whitelist WHERE keyword_id = ?", (keyword_id,))
+        for category_id in request.whitelist:
+            cursor.execute(
+                "INSERT INTO keyword_whitelist (keyword_id, category_id) VALUES (?, ?)",
+                (keyword_id, category_id)
+            )
+
+    conn.commit()
+    conn.close()
+    return {"status": "ok"}
 
 
 @app.delete("/api/keywords/{keyword_id}")

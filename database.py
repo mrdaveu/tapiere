@@ -594,12 +594,26 @@ def update_deck_sizing(deck_id: int, sizing: dict):
 
 
 def delete_deck(deck_id: int):
-    """Delete a deck. Keywords in this deck are moved to Default deck."""
+    """Delete a deck and all its keywords (cascade delete).
+
+    Also cleans up related blocklist/whitelist entries for those keywords.
+    Items remain in the database but become orphaned (keyword_id points nowhere).
+    """
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Move keywords to Default deck (id=1)
-    cursor.execute("UPDATE keywords SET deck_id = 1 WHERE deck_id = ?", (deck_id,))
+    # Get keyword IDs in this deck first
+    cursor.execute("SELECT id FROM keywords WHERE deck_id = ?", (deck_id,))
+    keyword_ids = [row['id'] for row in cursor.fetchall()]
+
+    # Delete blocklist and whitelist entries for these keywords
+    if keyword_ids:
+        placeholders = ','.join('?' * len(keyword_ids))
+        cursor.execute(f"DELETE FROM category_blocklist WHERE keyword_id IN ({placeholders})", keyword_ids)
+        cursor.execute(f"DELETE FROM keyword_whitelist WHERE keyword_id IN ({placeholders})", keyword_ids)
+
+    # Delete keywords in this deck
+    cursor.execute("DELETE FROM keywords WHERE deck_id = ?", (deck_id,))
     # Delete the deck
     cursor.execute("DELETE FROM decks WHERE id = ?", (deck_id,))
 

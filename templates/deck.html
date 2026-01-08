@@ -154,6 +154,41 @@
         background: var(--bg-secondary);
     }
 
+    .list-view-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: var(--bg-secondary);
+        padding: 12px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .list-view-header .view-toggle-btn {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: var(--accent-primary);
+        border: none;
+        color: white;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .list-view-header .view-toggle-btn:hover {
+        background: var(--accent-primary-dark);
+    }
+
+    .list-view-header .view-toggle-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
     .item-list {
         flex: 1;
         overflow-y: auto;
@@ -800,13 +835,6 @@
                 <div id="topbarDeckFilters"></div>
             </div>
         </div>
-        <div style="flex: 1;"></div>
-        <button class="view-toggle-btn" id="viewToggleBtn" onclick="toggleView()" style="display: none;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/>
-            </svg>
-            Back to Grid
-        </button>
     </div>
 
     <div class="content-area">
@@ -869,6 +897,14 @@
         <!-- List View (split pane) -->
         <div class="split-container" id="listView" style="display: none;">
             <div class="item-list-pane">
+                <div class="list-view-header">
+                    <button class="view-toggle-btn" onclick="toggleView()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/>
+                        </svg>
+                        Back to Grid
+                    </button>
+                </div>
                 <div class="item-list" id="itemList"></div>
             </div>
 

@@ -396,12 +396,8 @@
     <div class="content-area">
         <div class="keywords-content">
             <div class="page-header">
-                <div class="page-header-left">
-                    <span class="scrape-status" id="scrapeStatus">Ready</span>
-                    <button class="btn btn-primary" onclick="scrapeAll()">Scrape All</button>
-                </div>
+                <h2 class="page-title">Keywords</h2>
                 <div class="deck-actions">
-                    <button class="btn" onclick="openSizingModal()">Edit Profile</button>
                     <button class="btn btn-ghost" onclick="deleteDeck()" id="deleteDeckBtn" style="display:none;">Delete Deck</button>
                 </div>
             </div>
@@ -426,6 +422,16 @@
         </div>
         <div class="modal-body">
             <input type="text" class="keyword-input-large" id="keywordInput" placeholder="What do you want to find?">
+
+            <div class="form-group" style="margin: 16px 0;">
+                <label style="display: block; margin-bottom: 8px; font-size: 12px; font-weight: 500; color: var(--text-secondary);">SOURCE</label>
+                <select id="sourceSelect" style="width: 100%; padding: 8px 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 14px;">
+                    <option value="all">All (Mercari + Yahoo + Rakuten)</option>
+                    <option value="mercari">Mercari</option>
+                    <option value="yahoo">Yahoo Auctions</option>
+                    <option value="rakuten">Rakuten Fril</option>
+                </select>
+            </div>
 
             <div class="category-section">
                 <div class="category-section-header">
@@ -452,113 +458,6 @@
 </div>
 
 <!-- Sizing Profile Modal -->
-<div class="modal-overlay" id="sizingModalOverlay" onclick="if(event.target === this) closeSizingModal()">
-    <div class="modal sizing-modal" style="max-width: 700px;">
-        <div class="modal-header">
-            <h3 class="modal-title">Sizing Profile</h3>
-        </div>
-        <div class="modal-body">
-            <div style="display: flex; gap: 32px;">
-                <div style="flex: 0 0 200px; display: flex; justify-content: center; align-items: center;">
-                    <svg viewBox="0 0 100 180" fill="none" stroke="currentColor" stroke-width="1" style="width: 180px; height: 320px;">
-                        <circle cx="50" cy="15" r="10" fill="none"/>
-                        <line x1="50" y1="25" x2="50" y2="32"/>
-                        <line x1="25" y1="35" x2="75" y2="35" stroke="var(--accent-primary)" stroke-width="2"/>
-                        <text x="82" y="38" font-size="8" fill="var(--accent-primary)">A</text>
-                        <line x1="25" y1="35" x2="15" y2="75"/>
-                        <line x1="75" y1="35" x2="85" y2="75"/>
-                        <line x1="28" y1="35" x2="32" y2="95"/>
-                        <line x1="72" y1="35" x2="68" y2="95"/>
-                        <line x1="30" y1="50" x2="70" y2="50" stroke="var(--accent-primary)" stroke-width="2"/>
-                        <text x="77" y="53" font-size="8" fill="var(--accent-primary)">B</text>
-                        <line x1="50" y1="35" x2="50" y2="95" stroke="var(--accent-primary)" stroke-width="2" stroke-dasharray="3,2"/>
-                        <text x="53" y="70" font-size="8" fill="var(--accent-primary)">C</text>
-                        <line x1="32" y1="75" x2="68" y2="75" stroke="var(--accent-primary)" stroke-width="2"/>
-                        <text x="75" y="78" font-size="8" fill="var(--accent-primary)">D</text>
-                        <line x1="32" y1="95" x2="68" y2="95"/>
-                        <line x1="30" y1="105" x2="70" y2="105" stroke="var(--accent-primary)" stroke-width="2"/>
-                        <text x="77" y="108" font-size="8" fill="var(--accent-primary)">E</text>
-                        <path d="M32 95 L50 115 L68 95" fill="none"/>
-                        <line x1="42" y1="95" x2="42" y2="115" stroke="var(--accent-primary)" stroke-width="2"/>
-                        <text x="35" y="108" font-size="8" fill="var(--accent-primary)">F</text>
-                        <line x1="35" y1="115" x2="32" y2="170"/>
-                        <line x1="65" y1="115" x2="68" y2="170"/>
-                        <line x1="58" y1="115" x2="58" y2="170" stroke="var(--accent-primary)" stroke-width="2"/>
-                        <text x="61" y="145" font-size="8" fill="var(--accent-primary)">G</text>
-                    </svg>
-                </div>
-                <div style="flex: 1; display: flex; flex-direction: column; gap: 12px;">
-                    <div class="measurement-row" style="display: flex; align-items: center; gap: 8px;">
-                        <span style="width: 140px; font-size: 13px; color: var(--text-secondary);"><span style="display: inline-block; width: 20px; height: 20px; background: var(--accent-primary); color: white; border-radius: 4px; text-align: center; line-height: 20px; font-size: 11px; font-weight: 600; margin-right: 8px;">A</span>Shoulder</span>
-                        <select class="op-select" id="size_a_op" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px;">
-                            <option value="">--</option><option value=">">&ge;</option><option value="<">&le;</option><option value="~">&asymp;</option>
-                        </select>
-                        <input type="number" class="val-input" id="size_a_val" placeholder="--" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px; font-family: 'IBM Plex Mono', monospace;">
-                        <span style="font-size: 12px; color: var(--text-muted);">cm</span>
-                    </div>
-                    <div class="measurement-row" style="display: flex; align-items: center; gap: 8px;">
-                        <span style="width: 140px; font-size: 13px; color: var(--text-secondary);"><span style="display: inline-block; width: 20px; height: 20px; background: var(--accent-primary); color: white; border-radius: 4px; text-align: center; line-height: 20px; font-size: 11px; font-weight: 600; margin-right: 8px;">B</span>Chest</span>
-                        <select class="op-select" id="size_b_op" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px;">
-                            <option value="">--</option><option value=">">&ge;</option><option value="<">&le;</option><option value="~">&asymp;</option>
-                        </select>
-                        <input type="number" class="val-input" id="size_b_val" placeholder="--" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px; font-family: 'IBM Plex Mono', monospace;">
-                        <span style="font-size: 12px; color: var(--text-muted);">cm</span>
-                    </div>
-                    <div class="measurement-row" style="display: flex; align-items: center; gap: 8px;">
-                        <span style="width: 140px; font-size: 13px; color: var(--text-secondary);"><span style="display: inline-block; width: 20px; height: 20px; background: var(--accent-primary); color: white; border-radius: 4px; text-align: center; line-height: 20px; font-size: 11px; font-weight: 600; margin-right: 8px;">C</span>Length</span>
-                        <select class="op-select" id="size_c_op" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px;">
-                            <option value="">--</option><option value=">">&ge;</option><option value="<">&le;</option><option value="~">&asymp;</option>
-                        </select>
-                        <input type="number" class="val-input" id="size_c_val" placeholder="--" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px; font-family: 'IBM Plex Mono', monospace;">
-                        <span style="font-size: 12px; color: var(--text-muted);">cm</span>
-                    </div>
-                    <div class="measurement-row" style="display: flex; align-items: center; gap: 8px;">
-                        <span style="width: 140px; font-size: 13px; color: var(--text-secondary);"><span style="display: inline-block; width: 20px; height: 20px; background: var(--accent-primary); color: white; border-radius: 4px; text-align: center; line-height: 20px; font-size: 11px; font-weight: 600; margin-right: 8px;">D</span>Waist</span>
-                        <select class="op-select" id="size_d_op" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px;">
-                            <option value="">--</option><option value=">">&ge;</option><option value="<">&le;</option><option value="~">&asymp;</option>
-                        </select>
-                        <input type="number" class="val-input" id="size_d_val" placeholder="--" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px; font-family: 'IBM Plex Mono', monospace;">
-                        <span style="font-size: 12px; color: var(--text-muted);">cm</span>
-                    </div>
-                    <div class="measurement-row" style="display: flex; align-items: center; gap: 8px;">
-                        <span style="width: 140px; font-size: 13px; color: var(--text-secondary);"><span style="display: inline-block; width: 20px; height: 20px; background: var(--accent-primary); color: white; border-radius: 4px; text-align: center; line-height: 20px; font-size: 11px; font-weight: 600; margin-right: 8px;">E</span>Hip</span>
-                        <select class="op-select" id="size_e_op" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px;">
-                            <option value="">--</option><option value=">">&ge;</option><option value="<">&le;</option><option value="~">&asymp;</option>
-                        </select>
-                        <input type="number" class="val-input" id="size_e_val" placeholder="--" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px; font-family: 'IBM Plex Mono', monospace;">
-                        <span style="font-size: 12px; color: var(--text-muted);">cm</span>
-                    </div>
-                    <div class="measurement-row" style="display: flex; align-items: center; gap: 8px;">
-                        <span style="width: 140px; font-size: 13px; color: var(--text-secondary);"><span style="display: inline-block; width: 20px; height: 20px; background: var(--accent-primary); color: white; border-radius: 4px; text-align: center; line-height: 20px; font-size: 11px; font-weight: 600; margin-right: 8px;">F</span>Rise</span>
-                        <select class="op-select" id="size_f_op" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px;">
-                            <option value="">--</option><option value=">">&ge;</option><option value="<">&le;</option><option value="~">&asymp;</option>
-                        </select>
-                        <input type="number" class="val-input" id="size_f_val" placeholder="--" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px; font-family: 'IBM Plex Mono', monospace;">
-                        <span style="font-size: 12px; color: var(--text-muted);">cm</span>
-                    </div>
-                    <div class="measurement-row" style="display: flex; align-items: center; gap: 8px;">
-                        <span style="width: 140px; font-size: 13px; color: var(--text-secondary);"><span style="display: inline-block; width: 20px; height: 20px; background: var(--accent-primary); color: white; border-radius: 4px; text-align: center; line-height: 20px; font-size: 11px; font-weight: 600; margin-right: 8px;">G</span>Inseam</span>
-                        <select class="op-select" id="size_g_op" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px;">
-                            <option value="">--</option><option value=">">&ge;</option><option value="<">&le;</option><option value="~">&asymp;</option>
-                        </select>
-                        <input type="number" class="val-input" id="size_g_val" placeholder="--" style="width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 13px; font-family: 'IBM Plex Mono', monospace;">
-                        <span style="font-size: 12px; color: var(--text-muted);">cm</span>
-                    </div>
-                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-light); font-size: 11px; color: var(--text-muted);">
-                        <span style="margin-right: 16px;"><strong>&ge;</strong> at least</span>
-                        <span style="margin-right: 16px;"><strong>&le;</strong> at most</span>
-                        <span><strong>&asymp;</strong> approximately</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="closeSizingModal()">Cancel</button>
-            <button class="btn btn-success" onclick="saveSizingProfile()">Save Profile</button>
-        </div>
-    </div>
-</div>
-
 <script>
     const deckId = {{ deck_id }};
     let deck = null;
@@ -602,6 +501,12 @@
         for (const kw of keywords) {
             const card = document.createElement('div');
             card.className = 'keyword-card';
+            card.style.cursor = 'pointer';
+            card.onclick = (e) => {
+                // Don't trigger if clicking buttons
+                if (e.target.tagName === 'BUTTON') return;
+                editKeyword(kw.id);
+            };
 
             // Build blocked categories display
             const blockedCategories = kw.blocked_categories || [];
@@ -613,7 +518,6 @@
             card.innerHTML = `
                 <div class="keyword-card-header">
                     <span class="keyword-text">${kw.keyword}</span>
-                    <span class="source-badge ${kw.source}">${kw.source}</span>
                 </div>
                 <div class="keyword-meta">
                     <span class="keyword-stat">${kw.actual_item_count || 0} items</span>
@@ -623,9 +527,8 @@
                     ${moreCount > 0 ? `<span class="keyword-hidden-tag">+${moreCount} more</span>` : ''}
                 </div>
                 <div class="keyword-card-footer">
-                    <button class="keyword-action scrape" onclick="scrapeKeyword(${kw.id})">Scrape</button>
-                    <button class="keyword-action edit" onclick="editKeyword(${kw.id})">Edit</button>
-                    <button class="keyword-action delete" onclick="deleteKeyword(${kw.id})">Delete</button>
+                    <button class="keyword-action scrape" onclick="event.stopPropagation(); scrapeKeyword(${kw.id})">Scrape</button>
+                    <button class="keyword-action delete" onclick="event.stopPropagation(); deleteKeyword(${kw.id})">Delete</button>
                 </div>
             `;
             grid.appendChild(card);
@@ -640,12 +543,14 @@
         availableCategories = [];
 
         const input = document.getElementById('keywordInput');
+        const sourceSelect = document.getElementById('sourceSelect');
         const deleteBtn = document.getElementById('deleteKeywordBtn');
 
         if (keywordId) {
             const kw = keywords.find(k => k.id === keywordId);
             if (kw) {
                 input.value = kw.keyword;
+                sourceSelect.value = kw.source || 'all';
                 selectedCategories = kw.whitelist_categories || [];
                 // blocked_categories now has: [{entry_id, category_id, category_name}, ...]
                 hiddenCategories = (kw.blocked_categories || []).map(c => ({
@@ -659,6 +564,7 @@
             deleteBtn.style.display = 'inline-block';
         } else {
             input.value = '';
+            sourceSelect.value = 'all';
             deleteBtn.style.display = 'none';
         }
 
@@ -804,17 +710,19 @@
 
     async function saveKeyword() {
         const keyword = document.getElementById('keywordInput').value.trim();
+        const source = document.getElementById('sourceSelect').value;
         if (!keyword) return;
 
         if (currentKeywordId) {
-            // Update existing
+            // Update existing keyword text, source, and whitelist
+            // Note: blocklist changes are handled immediately via removeHiddenCategory()
             await fetch(`/api/keywords/${currentKeywordId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     keyword,
-                    whitelist: selectedCategories,
-                    blocklist_remove: hiddenCategories.map(c => c.id || c)
+                    source,
+                    whitelist: selectedCategories
                 })
             });
         } else {
@@ -824,7 +732,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     keyword,
-                    source: 'both',
+                    source,
                     deck_id: deckId,
                     whitelist: selectedCategories
                 })
@@ -851,87 +759,25 @@
 
     // Scraping
     async function scrapeKeyword(keywordId) {
-        document.getElementById('scrapeStatus').textContent = 'Scraping...';
-        document.getElementById('scrapeStatus').className = 'scrape-status running';
         await fetch(`/api/scrape/${keywordId}`, { method: 'POST' });
-        pollStatus();
-    }
-
-    async function scrapeAll() {
-        document.getElementById('scrapeStatus').textContent = 'Scraping all...';
-        document.getElementById('scrapeStatus').className = 'scrape-status running';
-        await fetch('/api/scrape', { method: 'POST' });
-        pollStatus();
-    }
-
-    async function pollStatus() {
-        const res = await fetch('/api/scrape/status');
-        const status = await res.json();
-
-        document.getElementById('scrapeStatus').textContent = status.message || 'Ready';
-
-        if (status.running) {
-            document.getElementById('scrapeStatus').className = 'scrape-status running';
-            setTimeout(pollStatus, 2000);
-        } else {
-            document.getElementById('scrapeStatus').className = 'scrape-status';
-            loadKeywords();
-        }
+        // Reload keywords after scraping
+        setTimeout(loadKeywords, 2000);
     }
 
     // Deck operations
     async function deleteDeck() {
-        if (!confirm('Delete this deck? Keywords will be moved to Default deck.')) return;
+        if (!confirm('Delete this deck? All keywords in this deck will also be deleted.')) return;
         await fetch(`/api/decks/${deckId}`, { method: 'DELETE' });
         window.location.href = '/keywords/1';
     }
 
     // Sizing modal
-    function openSizingModal() {
-        fetch(`/api/decks/${deckId}`)
-            .then(res => res.json())
-            .then(deck => {
-                for (const key of ['a', 'b', 'c', 'd', 'e', 'f', 'g']) {
-                    const opSelect = document.getElementById(`size_${key}_op`);
-                    const valInput = document.getElementById(`size_${key}_val`);
-                    opSelect.value = deck[`size_${key}_op`] || '';
-                    valInput.value = deck[`size_${key}_val`] || '';
-                }
-            });
-
-        document.getElementById('sizingModalOverlay').classList.add('active');
-    }
-
-    function closeSizingModal() {
-        document.getElementById('sizingModalOverlay').classList.remove('active');
-    }
-
-    async function saveSizingProfile() {
-        const sizing = {};
-        for (const key of ['a', 'b', 'c', 'd', 'e', 'f', 'g']) {
-            const op = document.getElementById(`size_${key}_op`).value || null;
-            const val = document.getElementById(`size_${key}_val`).value;
-            sizing[key] = { op, val: val ? parseInt(val) : null };
-        }
-
-        await fetch(`/api/decks/${deckId}/sizing`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(sizing)
-        });
-
-        closeSizingModal();
-    }
-
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
         const keywordModalActive = document.getElementById('keywordModalOverlay').classList.contains('active');
-        const sizingModalActive = document.getElementById('sizingModalOverlay').classList.contains('active');
 
         if (keywordModalActive) {
             if (e.key === 'Escape') closeKeywordModal();
-        } else if (sizingModalActive) {
-            if (e.key === 'Escape') closeSizingModal();
         } else {
             if (e.key === 'n' || e.key === 'N') {
                 e.preventDefault();
