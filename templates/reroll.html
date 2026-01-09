@@ -386,6 +386,8 @@
 <script>
     let currentItems = [];
     let previousItems = [];
+    let actualCurrent = [];      // Holds current batch when viewing previous
+    let viewingPrevious = false; // true when showing previousItems
     let savedIds = new Set(JSON.parse(localStorage.getItem('savedIds') || '[]'));
     let allKeywords = [];
     let lastRefreshTime = localStorage.getItem('lastRefreshTime') || null;
@@ -457,7 +459,6 @@
         document.getElementById('cardsContainer').style.display = 'flex';
         document.getElementById('emptyState').style.display = 'none';
 
-        previousItems = [...currentItems];
         currentItems = items;
         renderCards();
         loadNavStats();
@@ -517,6 +518,8 @@
             await fetch('/api/scrape', { method: 'POST' });
             lastRefreshTime = Date.now();
             localStorage.setItem('lastRefreshTime', lastRefreshTime);
+            // Clear preload queue so next fetch gets fresh items including newly scraped
+            preloadedBatches = [];
             await loadItems();
         } catch (e) {
             console.error('Refresh failed:', e);
@@ -675,7 +678,7 @@
         if (currentItems.length === 0 || isRerolling) return;
         isRerolling = true;
 
-        // Fire seen API in background (no await)
+        // Mark displayed items as seen (fire in background)
         const itemIds = currentItems.filter(item => !savedIds.has(item.id)).map(item => item.id);
         if (itemIds.length > 0) {
             fetch('/api/items/seen', {
@@ -685,17 +688,28 @@
             });
         }
 
-        localStorage.setItem('previousItems', JSON.stringify(currentItems));
+        // If viewing previous, return to current (no new fetch)
+        if (viewingPrevious) {
+            viewingPrevious = false;
+            currentItems = actualCurrent;
+            renderCards();
+            isRerolling = false;
+            return;
+        }
+
+        // Normal advance: shift states and fetch new
+        previousItems = [...currentItems];
         await loadItems();
         isRerolling = false;
     }
 
     function goBack() {
-        const stored = localStorage.getItem('previousItems');
-        if (stored) {
-            currentItems = JSON.parse(stored);
-            renderCards();
-        }
+        if (previousItems.length === 0) return;
+
+        viewingPrevious = true;
+        actualCurrent = [...currentItems];  // Save current batch
+        currentItems = previousItems;        // Display previous batch
+        renderCards();
     }
 
     document.addEventListener('keydown', (e) => {

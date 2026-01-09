@@ -655,28 +655,40 @@ async def refresh_item_status_endpoint(item_id: int):
         url = item.get('url', '')
 
         if "mercari" in url:
-            # Extract item ID from URL
-            match = re.search(r'/item/(m\d+)', url)
+            # Extract item ID from URL - handle both /item/ and /shops/product/ URLs
+            match = re.search(r'/(?:item|shops/product)/([a-zA-Z0-9]+)', url)
             if match:
                 mercari_item_id = match.group(1)
-                # Use mercari library - fast API call, no browser needed
-                from mercari_api import get_item_info
-                mercari_item = get_item_info(mercari_item_id)
-                status = mercari_item.status
 
-                # Mercari returns lowercase status like "on_sale", "trading", "sold_out"
-                if status == "on_sale":
-                    new_status = "available"
-                elif status == "trading":
-                    new_status = "trading"
-                elif status == "sold_out":
-                    new_status = "sold"
+                # Check if this is a shop/business item (not m + 11 digits)
+                is_shop_item = not re.match(r'^m\d{11}$', mercari_item_id)
+
+                if is_shop_item:
+                    # Shop items: fetch via HTML page
+                    from detail_scraper import scrape_mercari_shop_detail
+                    details = scrape_mercari_shop_detail(mercari_item_id)
+                    new_status = details.get("sold_status", "unknown")
+                    if details.get("price"):
+                        new_price = details["price"]
                 else:
-                    new_status = status or "unknown"
+                    # Regular items: use mercari API - fast API call, no browser needed
+                    from mercari_api import get_item_info
+                    mercari_item = get_item_info(mercari_item_id)
+                    status = mercari_item.status
 
-                # Update price if available
-                if hasattr(mercari_item, 'price') and mercari_item.price:
-                    new_price = mercari_item.price
+                    # Mercari returns lowercase status like "on_sale", "trading", "sold_out"
+                    if status == "on_sale":
+                        new_status = "available"
+                    elif status == "trading":
+                        new_status = "trading"
+                    elif status == "sold_out":
+                        new_status = "sold"
+                    else:
+                        new_status = status or "unknown"
+
+                    # Update price if available
+                    if hasattr(mercari_item, 'price') and mercari_item.price:
+                        new_price = mercari_item.price
 
         elif "yahoo" in url or "auctions" in url:
             # Yahoo: Fetch HTML and parse __NEXT_DATA__
@@ -1445,26 +1457,48 @@ async def check_sold_status(url: str):
 
     try:
         if "mercari" in url:
-            # Extract item ID from URL
-            match = re.search(r'/item/(m\d+)', url)
+            # Extract item ID from URL - handle both /item/ and /shops/product/ URLs
+            match = re.search(r'/(?:item|shops/product)/([a-zA-Z0-9]+)', url)
             if match:
                 item_id = match.group(1)
-                # Use mercari library - fast API call, no browser needed
-                from mercari_api import get_item_info
-                item = get_item_info(item_id)
-                status = item.status
 
-                if status == "on_sale":
-                    result["available"] = True
-                    result["status"] = "available"
-                elif status == "trading":
-                    result["available"] = False
-                    result["status"] = "trading"
-                elif status == "sold_out":
-                    result["available"] = False
-                    result["status"] = "sold"
+                # Check if this is a shop/business item (not m + 11 digits)
+                is_shop_item = not re.match(r'^m\d{11}$', item_id)
+
+                if is_shop_item:
+                    # Shop items: fetch via HTML page
+                    from detail_scraper import scrape_mercari_shop_detail
+                    details = scrape_mercari_shop_detail(item_id)
+                    status = details.get("sold_status", "unknown")
+
+                    if status == "available":
+                        result["available"] = True
+                        result["status"] = "available"
+                    elif status == "trading":
+                        result["available"] = False
+                        result["status"] = "trading"
+                    elif status == "sold":
+                        result["available"] = False
+                        result["status"] = "sold"
+                    else:
+                        result["status"] = status or "unknown"
                 else:
-                    result["status"] = status or "unknown"
+                    # Regular items: use mercari API - fast API call, no browser needed
+                    from mercari_api import get_item_info
+                    item = get_item_info(item_id)
+                    status = item.status
+
+                    if status == "on_sale":
+                        result["available"] = True
+                        result["status"] = "available"
+                    elif status == "trading":
+                        result["available"] = False
+                        result["status"] = "trading"
+                    elif status == "sold_out":
+                        result["available"] = False
+                        result["status"] = "sold"
+                    else:
+                        result["status"] = status or "unknown"
 
         elif "yahoo" in url or "auctions" in url:
             # Yahoo: Fetch HTML and parse __NEXT_DATA__

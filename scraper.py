@@ -237,10 +237,18 @@ async def scrape_mercari_fast(keyword: str, max_items: int = 300,
             cat_id = item_data.get("categoryId")
             category_id = f"mercari:{cat_id}" if cat_id else None
 
+            # Determine correct URL format - shop items use /shops/product/, regular items use /item/
+            # Regular items: m followed by 11 digits (e.g., m86254101449)
+            # Shop items: any other alphanumeric ID
+            if re.match(r'^m\d{11}$', item_id):
+                item_url = f"{root_product_url}{item_id}"
+            else:
+                item_url = f"https://jp.mercari.com/shops/product/{item_id}"
+
             all_items.append({
                 "source": "mercari",
                 "source_id": item_id,
-                "url": f"{root_product_url}{item_id}",
+                "url": item_url,
                 "title": title[:200],
                 "price": price,
                 "image_url": image_url,
@@ -530,10 +538,18 @@ def scrape_mercari(keyword: str, max_items: int = 300, headless: bool = True,
                 cat_id = item_data.get("categoryId")
                 category_id = f"mercari:{cat_id}" if cat_id else None
 
+                # Determine correct URL format - shop items use /shops/product/, regular items use /item/
+                # Regular items: m followed by 11 digits (e.g., m86254101449)
+                # Shop items: any other alphanumeric ID
+                if re.match(r'^m\d{11}$', item_id):
+                    item_url = f"{root_product_url}{item_id}"
+                else:
+                    item_url = f"https://jp.mercari.com/shops/product/{item_id}"
+
                 all_items.append({
                     "source": "mercari",
                     "source_id": item_id,
-                    "url": f"{root_product_url}{item_id}",
+                    "url": item_url,
                     "title": title[:200],
                     "price": price,
                     "image_url": image_url,

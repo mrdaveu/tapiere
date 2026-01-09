@@ -154,39 +154,23 @@
         background: var(--bg-secondary);
     }
 
-    .list-view-header {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background: var(--bg-secondary);
-        padding: 12px;
-        border-bottom: 1px solid var(--border-color);
-    }
-
-    .list-view-header .view-toggle-btn {
-        width: 100%;
+    .back-to-grid {
         display: flex;
         align-items: center;
-        justify-content: center;
         gap: 8px;
-        padding: 8px 12px;
-        background: var(--accent-primary);
-        border: none;
-        color: white;
-        border-radius: 6px;
+        padding: 10px 12px;
+        color: var(--text-muted);
         font-size: 13px;
-        font-weight: 500;
         cursor: pointer;
         transition: all 0.15s;
     }
 
-    .list-view-header .view-toggle-btn:hover {
-        background: var(--accent-primary-dark);
+    .back-to-grid:hover {
+        color: var(--text-primary);
     }
 
-    .list-view-header .view-toggle-btn svg {
-        width: 16px;
-        height: 16px;
+    .back-to-grid .arrow {
+        font-size: 16px;
     }
 
     .item-list {
@@ -897,14 +881,6 @@
         <!-- List View (split pane) -->
         <div class="split-container" id="listView" style="display: none;">
             <div class="item-list-pane">
-                <div class="list-view-header">
-                    <button class="view-toggle-btn" onclick="toggleView()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/>
-                        </svg>
-                        Back to Grid
-                    </button>
-                </div>
                 <div class="item-list" id="itemList"></div>
             </div>
 
@@ -963,7 +939,6 @@
             viewMode = 'grid';
             document.getElementById('gridView').style.display = 'block';
             document.getElementById('listView').style.display = 'none';
-            document.getElementById('viewToggleBtn').style.display = 'none';
         }
     }
 
@@ -971,7 +946,6 @@
         viewMode = 'list';
         document.getElementById('gridView').style.display = 'none';
         document.getElementById('listView').style.display = 'flex';
-        document.getElementById('viewToggleBtn').style.display = 'flex';
         renderList();
         showDetail(index);
     }
@@ -1195,12 +1169,20 @@
     function renderList() {
         const container = document.getElementById('itemList');
 
+        // Back to grid as first item
+        let html = `
+            <div class="back-to-grid" onclick="toggleView()">
+                <span class="arrow">←</span>
+                <span>Back to grid</span>
+            </div>
+        `;
+
         if (items.length === 0) {
-            container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">No saved items</div>';
+            container.innerHTML = html + '<div style="padding: 20px; text-align: center; color: var(--text-muted);">No saved items</div>';
             return;
         }
 
-        container.innerHTML = items.map((item, i) => {
+        html += items.map((item, i) => {
             const isSold = item.sold_status && item.sold_status !== 'available' && item.sold_status !== 'unknown';
             const isAuction = item.is_auction && item.source === 'yahoo';
             const stars = item.stars ? '★'.repeat(item.stars) : '';
@@ -1218,6 +1200,8 @@
                 </div>
             `;
         }).join('');
+
+        container.innerHTML = html;
     }
 
     async function fetchItemDetails(itemId) {

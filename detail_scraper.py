@@ -14,20 +14,88 @@ from typing import Optional
 from database import get_connection
 
 
+def is_mercari_shop_item(item_id: str) -> bool:
+    """
+    Check if item_id is a business/shop item (not regular m-prefixed).
+
+    Regular items: m followed by 11 digits (e.g., m86254101449)
+    Shop items: Alphanumeric string NOT matching m\d{11} pattern
+    """
+    return not re.match(r'^m\d{11}$', item_id)
+
+
+def scrape_mercari_shop_detail(item_id: str) -> dict:
+    """
+    Scrape Mercari shop/business item details via HTML page.
+    Shop items don't work with the regular API endpoint.
+    """
+    result = {"description": None, "price": None, "images": [], "sold_status": None}
+
+    try:
+        import httpx
+
+        url = f"https://jp.mercari.com/shops/product/{item_id}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            "Accept-Language": "ja-JP,ja;q=0.9",
+        }
+
+        with httpx.Client(headers=headers, follow_redirects=True, timeout=15.0) as client:
+            response = client.get(url)
+            response.raise_for_status()
+            html = response.text
+
+        # Parse __NEXT_DATA__ JSON (similar to Yahoo approach)
+        match = re.search(r'<script id="__NEXT_DATA__"[^>]*>([^<]+)</script>', html)
+        if match:
+            data = json.loads(match.group(1))
+            # Extract item details from pageProps
+            item_data = data.get("props", {}).get("pageProps", {}).get("item", {})
+
+            result["description"] = item_data.get("description")
+            result["price"] = item_data.get("price")
+
+            # Extract images - shop items have photos array with imageUrl field
+            photos = item_data.get("photos", [])
+            if photos:
+                result["images"] = [img.get("imageUrl") for img in photos if img.get("imageUrl")][:20]
+
+            # Status
+            status = item_data.get("status", "")
+            if status == "on_sale":
+                result["sold_status"] = "available"
+            elif status == "trading":
+                result["sold_status"] = "trading"
+            elif status == "sold_out":
+                result["sold_status"] = "sold"
+            else:
+                result["sold_status"] = status or "unknown"
+
+    except Exception as e:
+        print(f"Error fetching Mercari shop item {item_id}: {e}")
+
+    return result
+
+
 def scrape_mercari_detail(url: str, page=None) -> dict:
     """
     Fetch Mercari item details using the API directly.
     No browser needed - fast and returns JPY prices.
+    Routes to shop scraper for business/shop items.
     """
     result = {"description": None, "price": None, "images": [], "sold_status": None}
 
-    # Extract item ID from URL
-    match = re.search(r'/item/([a-zA-Z0-9]+)', url)
+    # Extract item ID from URL - handle both /item/ and /shops/product/ URLs
+    match = re.search(r'/(?:item|shops/product)/([a-zA-Z0-9]+)', url)
     if not match:
         print(f"Could not extract item ID from URL: {url}")
         return result
 
     item_id = match.group(1)
+
+    # Route shop/business items to dedicated scraper
+    if is_mercari_shop_item(item_id):
+        return scrape_mercari_shop_detail(item_id)
 
     try:
         import requests
