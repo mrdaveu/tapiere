@@ -383,7 +383,7 @@ async def set_username_endpoint(request: SetUsernameRequest, user: dict = Depend
 
 @app.post("/api/invite/request")
 async def request_invite(request: InviteRequest):
-    """Request an invite to TAPIERE."""
+    """Request an invite to TAPIERE - instantly sends magic link."""
     email = request.email.lower().strip()
 
     # Check if already a user
@@ -393,18 +393,28 @@ async def request_invite(request: InviteRequest):
     # Check if already requested
     existing = get_invite_request_by_email(email)
     if existing:
-        if existing['status'] == 'pending':
-            return {"status": "ok", "message": "You're already on the waitlist!"}
-        elif existing['status'] == 'approved':
-            return {"status": "ok", "message": "You've already been approved. Check your email for a login link."}
+        if existing['status'] == 'approved':
+            # Re-send magic link
+            token = create_magic_link(email, 'invite')
+            send_magic_link(email, token, 'invite')
+            return {"status": "ok", "message": "Check your email for a sign-in link!"}
+        elif existing['status'] == 'pending':
+            # Auto-approve and send link
+            approve_invite_request(existing['id'], approved_by=None)
+            token = create_magic_link(email, 'invite')
+            send_magic_link(email, token, 'invite')
+            return {"status": "ok", "message": "Check your email for a sign-in link!"}
 
     # Create invite request
     request_id = create_invite_request(email, request.reason)
     if not request_id:
-        return {"status": "ok", "message": "You're already on the waitlist!"}
+        return {"status": "ok", "message": "Check your email for a sign-in link!"}
 
-    send_invite_confirmation(email)
-    return {"status": "ok", "message": "You're on the waitlist! We'll send you a link when you're approved."}
+    # Auto-approve and send magic link immediately
+    approve_invite_request(request_id, approved_by=None)
+    token = create_magic_link(email, 'invite')
+    send_magic_link(email, token, 'invite')
+    return {"status": "ok", "message": "Check your email for a sign-in link!"}
 
 
 @app.get("/api/invite/requests")

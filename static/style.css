@@ -863,6 +863,7 @@ kbd {
     gap: 12px;
     margin-bottom: 20px;
     flex-wrap: wrap;
+    margin-top: 8px;
 }
 
 .rating-section {

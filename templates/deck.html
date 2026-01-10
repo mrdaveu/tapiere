@@ -381,7 +381,7 @@
     }
 
     .auction-info {
-        margin-bottom: 16px;
+        margin-bottom: 8px;
     }
 
     .rating-row {
@@ -798,6 +798,74 @@
     .rating-wrapper {
         position: relative;
     }
+
+    /* Toast notification */
+    .toast {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%) translateY(100px);
+        background: var(--text-primary);
+        color: var(--bg-primary);
+        padding: 14px 28px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        box-shadow: var(--shadow-md);
+        z-index: 9999;
+        opacity: 0;
+        transition: all 0.3s ease;
+        pointer-events: none;
+    }
+
+    .toast.show {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+
+    /* Share button */
+    .share-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        color: var(--text-secondary);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .share-btn:hover {
+        background: var(--bg-hover);
+        border-color: var(--text-muted);
+        color: var(--text-primary);
+    }
+
+    .share-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Header layout adjustments */
+    .header-left {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .header-right {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .header-spacer {
+        flex: 1;
+    }
 </style>
 {% endblock %}
 
@@ -825,7 +893,7 @@
         <!-- Grid View -->
         <div class="saved-content" id="gridView">
             <div class="page-header">
-                <div class="header-controls">
+                <div class="header-left">
                     <div class="dropdown-wrapper" id="sortDropdownGrid">
                         <div class="dropdown-trigger" onclick="toggleDropdown('sortDropdownGrid')">
                             <span id="sortLabelGrid">Newest</span>
@@ -856,16 +924,27 @@
                             <div id="deckFiltersGrid"></div>
                         </div>
                     </div>
+                    <span id="filterBadgeGrid"></span>
+                </div>
+                <div class="header-spacer"></div>
+                <div class="header-right">
+                    <span id="itemCountGrid" style="color: var(--text-muted); font-size: 13px;"></span>
                     <button class="import-btn" onclick="openImportModal()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
                         </svg>
                         Import
                     </button>
-                </div>
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <span id="itemCountGrid" style="color: var(--text-muted); font-size: 13px;"></span>
-                    <span id="filterBadgeGrid"></span>
+                    <button class="share-btn" onclick="copyShareLink()" title="Copy share link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="18" cy="5" r="3"/>
+                            <circle cx="6" cy="12" r="3"/>
+                            <circle cx="18" cy="19" r="3"/>
+                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                        </svg>
+                        Share
+                    </button>
                 </div>
             </div>
 
@@ -921,6 +1000,9 @@
     </div>
 </div>
 
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
 <script>
     let items = [];
     let currentItem = null;
@@ -933,6 +1015,43 @@
     let decksWithKeywords = [];
     let starPopoverVisible = false;
     let viewMode = 'grid'; // 'grid' or 'list'
+
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    async function copyShareLink() {
+        // Get current deck ID from topbar filter
+        const deckId = currentFilters.deck;
+        if (!deckId) {
+            showToast('Select a deck first');
+            return;
+        }
+
+        try {
+            // Enable sharing and get URL
+            const res = await fetch(`/api/decks/${deckId}/share`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_public: true })
+            });
+            const data = await res.json();
+
+            if (data.share_url) {
+                const fullUrl = window.location.origin + data.share_url;
+                await navigator.clipboard.writeText(fullUrl);
+                showToast('Share link copied!');
+            } else {
+                showToast('Could not generate share link');
+            }
+        } catch (e) {
+            console.error('Share failed:', e);
+            showToast('Failed to copy link');
+        }
+    }
 
     function toggleView() {
         if (viewMode === 'list') {

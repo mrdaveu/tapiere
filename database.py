@@ -1727,8 +1727,8 @@ def get_pending_invite_requests() -> List[dict]:
     return requests
 
 
-def approve_invite_request(request_id: int, approved_by: int) -> Optional[str]:
-    """Approve an invite request. Returns the email or None if not found."""
+def approve_invite_request(request_id: int, approved_by: Optional[int] = None) -> Optional[str]:
+    """Approve an invite request. Returns the email or None if not found. approved_by can be None for auto-approval."""
     conn = get_connection()
     cursor = conn.cursor()
 

@@ -111,24 +111,24 @@
         padding: 12px;
     }
 
+    .card-price {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+    }
+
     .card-title {
-        font-size: 12px;
-        color: var(--text-secondary);
+        font-size: 11px;
+        color: var(--text-muted);
         margin-bottom: 8px;
-        height: 32px;
+        height: 28px;
         overflow: hidden;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
-        line-height: 1.35;
-    }
-
-    .card-price {
-        font-family: 'IBM Plex Mono', monospace;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin-bottom: 6px;
+        line-height: 1.3;
     }
 
     @keyframes saveFlash {
@@ -307,6 +307,70 @@
         color: rgba(255,255,255,0.8);
     }
 
+    /* Skeleton loading cards */
+    .item-card.skeleton {
+        pointer-events: none;
+    }
+
+    .item-card.skeleton .card-image {
+        background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-hover) 50%, var(--bg-tertiary) 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+    }
+
+    .item-card.skeleton .skeleton-price {
+        height: 24px;
+        width: 80px;
+        background: var(--bg-tertiary);
+        border-radius: 4px;
+        margin-bottom: 4px;
+    }
+
+    .item-card.skeleton .skeleton-title {
+        height: 28px;
+        background: var(--bg-tertiary);
+        border-radius: 4px;
+        margin-bottom: 8px;
+    }
+
+    .item-card.skeleton .skeleton-badge {
+        height: 18px;
+        width: 50px;
+        background: var(--bg-tertiary);
+        border-radius: 3px;
+    }
+
+    @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+
+    /* Electric zapping button animation */
+    @keyframes electricBorder {
+        0%, 100% {
+            box-shadow: 0 0 5px #ffeb3b, inset 0 0 5px rgba(255,235,59,0.3);
+            border-color: #ffeb3b;
+        }
+        25% {
+            box-shadow: 3px 0 10px #ffeb3b, -3px 0 10px #ffeb3b;
+            border-color: #fff176;
+        }
+        50% {
+            box-shadow: 0 0 15px #fff176, inset 0 0 8px rgba(255,241,118,0.4);
+            border-color: #ffeb3b;
+        }
+        75% {
+            box-shadow: -3px 0 10px #ffeb3b, 3px 0 10px #ffeb3b;
+            border-color: #fff176;
+        }
+    }
+
+    .btn.zapping {
+        animation: electricBorder 0.25s infinite;
+        border-color: #ffeb3b;
+        color: #ffeb3b;
+    }
+
 </style>
 {% endblock %}
 
@@ -348,13 +412,12 @@
             </div>
         </div>
     </div>
-</div>
-
-<div class="controls-bar">
-    <span><kbd>1-5</kbd> Save item</span>
-    <span><kbd>Space</kbd> Load more</span>
-    <span><kbd>Backspace</kbd> Go back</span>
-    <span><kbd>U</kbd> Skip keyword</span>
+    <div class="controls-bar">
+        <span><kbd>1-5</kbd> Save item</span>
+        <span><kbd>Space</kbd> Load more</span>
+        <span><kbd>Backspace</kbd> Go back</span>
+        <span><kbd>U</kbd> Skip keyword</span>
+    </div>    
 </div>
 
 <div class="preload" id="preloadContainer"></div>
@@ -509,24 +572,80 @@
         return 'just now';
     }
 
+    function renderSkeletonCards() {
+        const container = document.getElementById('cardsContainer');
+        container.innerHTML = '';
+        container.style.display = 'flex';
+        document.getElementById('emptyState').style.display = 'none';
+
+        for (let i = 0; i < 5; i++) {
+            const card = document.createElement('div');
+            card.className = 'item-card skeleton';
+            card.innerHTML = `
+                <div class="card-number">${i + 1}</div>
+                <div class="card-image"></div>
+                <div class="card-info">
+                    <div class="skeleton-price"></div>
+                    <div class="skeleton-title"></div>
+                    <div class="skeleton-badge"></div>
+                </div>
+            `;
+            container.appendChild(card);
+        }
+    }
+
     async function refreshItems() {
         const btn = document.getElementById('refreshBtn');
-        btn.textContent = 'Refreshing...';
+        btn.classList.add('zapping');
         btn.disabled = true;
 
-        try {
-            await fetch('/api/scrape', { method: 'POST' });
-            lastRefreshTime = Date.now();
-            localStorage.setItem('lastRefreshTime', lastRefreshTime);
-            // Clear preload queue so next fetch gets fresh items including newly scraped
-            preloadedBatches = [];
-            await loadItems();
-        } catch (e) {
-            console.error('Refresh failed:', e);
-        }
+        // Show skeleton cards immediately
+        renderSkeletonCards();
 
-        btn.textContent = 'Refresh';
-        btn.disabled = false;
+        // Fire scrape in background (don't await)
+        fetch('/api/scrape', { method: 'POST' });
+        lastRefreshTime = Date.now();
+        localStorage.setItem('lastRefreshTime', lastRefreshTime);
+
+        // Clear preload queue
+        preloadedBatches = [];
+
+        // Poll for new items every 1 second
+        let attempts = 0;
+        const maxAttempts = 20;
+
+        const pollForItems = async () => {
+            attempts++;
+            const items = await fetchBatch();
+
+            if (items.length >= 5 || attempts >= maxAttempts) {
+                // We have items or timed out
+                btn.classList.remove('zapping');
+                btn.disabled = false;
+
+                if (items.length > 0) {
+                    currentItems = items;
+                    isAtEndOfStack = false;
+                    renderCards();
+                    loadNavStats();
+                    updateTopbarKeyword();
+                    loadKeywordsDropdown();
+                    ensurePreloaded();
+                } else {
+                    // Still no items after polling
+                    document.getElementById('cardsContainer').style.display = 'none';
+                    document.getElementById('emptyState').style.display = 'block';
+                    showEmptyState();
+                }
+                return;
+            }
+
+            // Keep polling
+            setTimeout(pollForItems, 1000);
+        };
+
+        // Start polling after a short initial delay
+        setTimeout(pollForItems, 1000);
     }
 
     function updateTopbarKeyword() {
@@ -629,8 +748,8 @@
                 <button class="hide-btn" onclick="event.stopPropagation(); openHideModal(${item.id})" title="Hide category">✕</button>
                 <img class="card-image" src="${item.image_url || ''}" alt="${item.title}" onerror="this.style.background='var(--bg-tertiary)'">
                 <div class="card-info">
-                    <div class="card-title">${item.title || 'Untitled'}</div>
                     <div class="card-price">¥${(item.price || 0).toLocaleString()}</div>
+                    <div class="card-title">${item.title || 'Untitled'}</div>
                     <span class="source-badge ${item.source}">${item.source}</span>
                 </div>
             `;

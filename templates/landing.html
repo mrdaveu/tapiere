@@ -293,15 +293,15 @@
         </div>
     </div>
 
-    <!-- Invite Request Modal -->
+    <!-- Sign Up Modal -->
     <div class="modal-overlay" id="inviteModal" onclick="if(event.target === this) closeInviteModal()">
         <div class="modal">
-            <h3>Request Invite</h3>
+            <h3>Sign Up</h3>
             <label for="inviteEmail">Email</label>
             <input type="email" id="inviteEmail" placeholder="your@email.com">
             <label for="inviteReason">Why do you want to use TAPIERE? (optional)</label>
             <textarea id="inviteReason" placeholder="I'm looking for..."></textarea>
-            <button class="btn btn-primary" onclick="requestInvite()">Join Waitlist</button>
+            <button class="btn btn-primary" onclick="requestInvite()">Get Started</button>
             <div id="inviteMessage"></div>
             <p class="modal-footer-text">
                 Already have an account? <a onclick="closeInviteModal(); openLoginModal();">Sign in</a>
